@@ -121,9 +121,18 @@ GITHUB_REPO=harry1174/superset
 GITHUB_WEBHOOK_SECRET=<openssl rand -hex 32>
 ```
 
-The GitHub token needs repository metadata read, issues read/write, and pull
-requests read. Devin's GitHub integration must separately be allowed to access
-`harry1174/superset` so the agent can clone and push branches.
+The GitHub token needs repository metadata read, issues read/write, pull
+requests read, and **checks read** — the CI gate reads the check-runs on the
+pull request head commit, and without that permission every verified pull
+request stalls waiting for a confirmation it cannot see. Devin's GitHub
+integration must separately be allowed to access `harry1174/superset` so the
+agent can clone and push branches.
+
+The fork's 45 inherited upstream workflows are disabled so that
+`remediation-verify` is the only check-run on an agent's pull request. If you
+fork afresh, disable them (Actions tab, or
+`PUT /repos/{owner}/{repo}/actions/workflows/{id}/disable`) before the first
+run, or the gate will be adjudicating Apache's CI rather than yours.
 
 ### 3. Sync policy and seed issues
 
