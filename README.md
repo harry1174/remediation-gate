@@ -7,8 +7,8 @@ a verified pull request using Devin as the engineer doing the work.
 
 The workflow is deliberately narrow: a GitHub label is the approval boundary,
 one Devin Playbook is the remediation policy, one Knowledge note carries
-repository conventions, and only a typed verdict with passing verification can
-advance to `pr_open`.
+repository conventions, and a pull request is only counted as verified once the
+repository's own CI agrees with the agent.
 
 ```text
 GitHub issue labeled devin:autofix
@@ -16,9 +16,37 @@ GitHub issue labeled devin:autofix
   -> idempotent SQLite task
   -> concurrency and ACU admission policy
   -> Devin session + Playbook + Knowledge + structured output
-  -> verified PR or explicit handoff
+  -> agent claims a verified PR
+  -> repository check-runs confirm it, or contradict it
   -> merge tracking and leadership metrics
 ```
+
+## The agent's claim is not the evidence
+
+Devin returns a typed verdict including `verification.all_passed`. That is a
+claim about commands it says it ran. Accepting it as proof would make "verified
+PR" mean "the agent graded its own homework", which is the first thing a
+skeptical reviewer will test.
+
+So the gate has two halves. A task stops at `agent_verified_pr` on the verdict
+alone. It is promoted to `verified_pr` only when the `remediation-verify`
+check-run on the fork is green. If CI contradicts the agent, the task becomes
+`failed_verification`, the issue is handed back with `devin:needs-human`, and it
+is counted in its own failure bucket.
+
+The gap between the two is reported on the dashboard as **agent overclaims**.
+That number is the honest defect rate of the Playbook, and it is the only way to
+tell whether editing the Playbook actually improved anything. Sessions are
+disposable; the Playbook is the asset that accumulates value, and this is how you
+measure it.
+
+`remediation-verify` is a purpose-built fast lane, not Superset's full CI: it
+runs only the commands the issue contract's `## Verification` section names,
+against only the files the pull request touched, and it fails a PR that adds a
+lint suppression or ships without a regression test. The fork's 45 inherited
+upstream workflows are disabled, so the check-run the orchestrator polls is
+unambiguous. This is the lane a team would give an agent — say so, rather than
+implying the agent cleared Apache's entire build.
 
 ## What is real
 
@@ -28,15 +56,14 @@ GitHub issue labeled devin:autofix
   and non-goals.
 - Devin v3 requests attach a Playbook, Knowledge note, repository, ACU cap,
   tags, and a JSON Schema.
-- GitHub HMAC verification, repository allowlisting, task idempotency, and the
-  verification gate are exercised by tests.
+- GitHub HMAC verification, repository allowlisting, task idempotency, the
+  verification gate, and the CI gate are exercised by tests.
 
 The deterministic demo adapter is only for evaluating the orchestration without
 credentials. It is visibly marked `Demo - no ACUs spent`; its session and PR
-links are not evidence of live remediation. Replace the links below after the
-live run:
+links are not evidence of live remediation.
 
-- Security issue: https://github.com/harry1174/superset/issues/1
+- Hardening issue: https://github.com/harry1174/superset/issues/1
 - Reliability issue: https://github.com/harry1174/superset/issues/2
 - Live Devin sessions: pending credentials
 - Verified PRs: pending credentials
@@ -127,15 +154,19 @@ and comments again only after verification passes.
 ## State and success model
 
 ```text
-queued -> dispatching -> dispatched -> running -> pr_open -> merged
-                                      |
+queued -> dispatching -> dispatched -> running -> agent_verified_pr -> verified_pr -> merged
+                                      |                     |
+                                      |                     +-> failed_verification  (CI disagreed)
+                                      |                     +-> blocked              (no checks reported)
+                                      |                     +-> timed_out            (checks never finished)
                                       +-> blocked
                                       +-> no_change_needed
                                       +-> failed_verification
                                       +-> failed / timed_out
 ```
 
-A URL is not success. `pr_open` requires all of the following:
+A URL is not success, and neither is the agent's word. Reaching
+`agent_verified_pr` requires all of the following:
 
 - `outcome` is `remediated`;
 - the PR belongs to the configured fork;
@@ -143,9 +174,15 @@ A URL is not success. `pr_open` requires all of the following:
 - `verification.all_passed` is true;
 - the verdict satisfies the Pydantic/JSON Schema contract.
 
-The dashboard reports cost per merged PR only after a merge. Value estimates are
-labeled assumptions. Failed verification can retain a PR URL for review, but it
-never enters the verified funnel.
+Reaching `verified_pr` requires one more thing that the agent does not control:
+every completed check-run on the PR head commit passed. A pull request that
+fails this step keeps its URL for review but is counted as a failure, never as a
+partial win — an automation that opens plausible pull requests nobody trusts
+moves the cost from writing the fix to reviewing a fix you disbelieve.
+
+The dashboard reports cost per merged PR only after a merge, withholds rates
+until at least five tasks have resolved, and labels every value estimate as an
+assumption.
 
 ## Project layout
 
