@@ -1,0 +1,20 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build assessment image
+        run: docker build --tag remediation-gate:test .
+      - name: Run tests
+        run: docker run --rm remediation-gate:test python -m pytest tests -q
+      - name: Validate Compose configuration
+        run: docker compose config --quiet

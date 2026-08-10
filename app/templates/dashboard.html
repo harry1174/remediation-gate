@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Remediation Gate</title>
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --surface: #ffffff;
+      --ink: #18212f;
+      --muted: #647184;
+      --rule: #dce2e9;
+      --green: #168466;
+      --amber: #b56b18;
+      --red: #b33a3a;
+      --indigo: #4a57a8;
+      --radius: 6px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+      letter-spacing: 0;
+    }
+    main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 26px 0 54px; }
+    header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; border-bottom: 1px solid var(--rule); padding-bottom: 18px; }
+    h1 { margin: 0; font-size: 26px; line-height: 1.1; letter-spacing: 0; }
+    .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+    .mode { font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; padding: 5px 8px; border: 1px solid var(--rule); border-radius: 4px; white-space: nowrap; }
+    .mode.live { color: var(--green); border-color: #abd6c9; background: #eef9f5; }
+    section { margin-top: 26px; }
+    h2 { margin: 0 0 11px; font-size: 13px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+    .funnel { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+    .stage { padding: 17px; min-height: 92px; border-right: 1px solid var(--rule); }
+    .stage:last-child { border-right: 0; }
+    .stage-label { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+    .stage-value { display: block; margin-top: 8px; font-size: 28px; font-weight: 700; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .stat { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 15px; min-height: 104px; }
+    .stat-label { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
+    .stat-value { display: block; margin-top: 7px; font-size: 25px; font-weight: 700; }
+    .stat-note { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .panel { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th { padding: 10px 12px; text-align: left; color: var(--muted); background: #fafbfd; font-size: 11px; text-transform: uppercase; }
+    td { padding: 12px; border-top: 1px solid var(--rule); vertical-align: top; font-size: 13px; overflow-wrap: anywhere; }
+    th:nth-child(1), td:nth-child(1) { width: 38%; }
+    th:nth-child(2), td:nth-child(2) { width: 14%; }
+    th:nth-child(3), td:nth-child(3) { width: 16%; }
+    th:nth-child(4), td:nth-child(4) { width: 10%; }
+    th:nth-child(5), td:nth-child(5) { width: 22%; }
+    .task-title { font-weight: 650; }
+    .task-meta, .reason { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .state { display: inline-block; padding: 3px 7px; border-radius: 4px; font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace; background: #eef0f6; color: var(--indigo); }
+    .state.merged, .state.pr_open { color: var(--green); background: #eaf7f2; }
+    .state.blocked, .state.failed, .state.failed_verification, .state.timed_out { color: var(--red); background: #fceeee; }
+    .state.running, .state.dispatched, .state.dispatching { color: var(--amber); background: #fff4e7; }
+    a { color: #315ea8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .empty { padding: 26px; color: var(--muted); }
+    footer { margin-top: 22px; color: var(--muted); font-size: 12px; }
+    @media (max-width: 800px) {
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .funnel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .stage:nth-child(2) { border-right: 0; }
+      .stage:nth-child(-n+2) { border-bottom: 1px solid var(--rule); }
+      .panel { overflow-x: auto; }
+      table { min-width: 760px; }
+    }
+    @media (max-width: 480px) {
+      main { width: min(100% - 20px, 1180px); padding-top: 18px; }
+      header { align-items: flex-start; }
+      .stats { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Remediation Gate</h1>
+      <p class="subtitle" id="repo">Loading repository...</p>
+    </div>
+    <span class="mode" id="mode">loading</span>
+  </header>
+
+  <section>
+    <h2>Delivery funnel</h2>
+    <div class="funnel" id="funnel"></div>
+  </section>
+
+  <section>
+    <h2>Operating signals</h2>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section>
+    <h2>Task evidence</h2>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Issue</th><th>Class</th><th>State</th><th>ACUs</th><th>Evidence</th></tr></thead>
+        <tbody id="tasks"></tbody>
+      </table>
+      <p class="empty" id="empty">No work triggered yet.</p>
+    </div>
+  </section>
+
+  <footer id="assumptions"></footer>
+</main>
+<script>
+  const text = (tag, value, className) => {
+    const node = document.createElement(tag);
+    node.textContent = value;
+    if (className) node.className = className;
+    return node;
+  };
+
+  function renderFunnel(rows) {
+    const root = document.getElementById('funnel');
+    root.replaceChildren();
+    const labels = {triggered: 'Triggered', session: 'Devin session', verified_pr: 'Verified PR', merged: 'Merged'};
+    rows.forEach(row => {
+      const stage = document.createElement('div');
+      stage.className = 'stage';
+      stage.append(text('span', labels[row.stage], 'stage-label'));
+      stage.append(text('strong', String(row.count), 'stage-value'));
+      root.append(stage);
+    });
+  }
+
+  function addStat(root, label, value, note) {
+    const card = document.createElement('div');
+    card.className = 'stat';
+    card.append(text('span', label, 'stat-label'));
+    card.append(text('strong', value, 'stat-value'));
+    card.append(text('span', note, 'stat-note'));
+    root.append(card);
+  }
+
+  function renderStats(headline) {
+    const root = document.getElementById('stats');
+    root.replaceChildren();
+    addStat(root, 'Cost per merged PR', headline.cost_per_merged_pr_usd == null ? '—' : `$${headline.cost_per_merged_pr_usd}`, 'All ACU spend / merged output');
+    addStat(root, 'Median time to PR', headline.median_minutes_to_pr == null ? '—' : `${headline.median_minutes_to_pr}m`, 'Trigger to verified PR');
+    addStat(root, 'Success rate', `${headline.success_rate}%`, `${headline.verified_prs} verified, ${headline.needs_human} handed back`);
+    addStat(root, 'Daily budget', `${headline.budget_used_pct}%`, `${headline.total_acus} ACUs observed`);
+  }
+
+  function link(label, url) {
+    const anchor = document.createElement('a');
+    anchor.textContent = label;
+    anchor.href = url;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener';
+    return anchor;
+  }
+
+  function renderTasks(tasks) {
+    const root = document.getElementById('tasks');
+    const empty = document.getElementById('empty');
+    root.replaceChildren();
+    empty.hidden = tasks.length > 0;
+    tasks.forEach(task => {
+      const row = document.createElement('tr');
+      const issue = document.createElement('td');
+      issue.append(text('span', `#${task.issue_number} ${task.title}`, 'task-title'));
+      issue.append(text('span', `${task.elapsed_minutes} minutes elapsed`, 'task-meta'));
+      if (task.failure_reason) issue.append(text('span', task.failure_reason, 'reason'));
+      row.append(issue);
+      row.append(text('td', `${task.class} / ${task.severity}`));
+      const stateCell = document.createElement('td');
+      stateCell.append(text('span', task.state, `state ${task.state}`));
+      row.append(stateCell);
+      row.append(text('td', String(task.acus || '—')));
+      const evidence = document.createElement('td');
+      const links = document.createElement('div');
+      links.className = 'links';
+      links.append(link('Issue', task.issue_url));
+      if (task.session_url) links.append(link('Session', task.session_url));
+      if (task.pr_url) links.append(link('Pull request', task.pr_url));
+      evidence.append(links);
+      row.append(evidence);
+      root.append(row);
+    });
+  }
+
+  async function refresh() {
+    try {
+      const response = await fetch('/api/metrics');
+      const data = await response.json();
+      document.getElementById('repo').textContent = data.repo;
+      const mode = document.getElementById('mode');
+      mode.textContent = data.mode === 'live' ? 'Live · Devin API' : 'Demo · no ACUs spent';
+      mode.className = `mode ${data.mode}`;
+      renderFunnel(data.funnel);
+      renderStats(data.headline);
+      renderTasks(data.tasks);
+      const a = data.assumptions;
+      document.getElementById('assumptions').textContent = `Value assumptions: $${a.acu_unit_cost_usd}/ACU, ${a.engineer_hours_per_merged_pr} engineer hours per merged PR, $${a.engineer_hourly_cost_usd}/hour. These are inputs, not measured results.`;
+    } catch (_) {
+      document.getElementById('repo').textContent = 'Metrics unavailable';
+    }
+  }
+  refresh();
+  setInterval(refresh, 3000);
+</script>
+</body>
+</html>

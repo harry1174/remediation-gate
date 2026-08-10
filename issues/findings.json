@@ -1,0 +1,16 @@
+[
+  {
+    "title": "Use a safe YAML loader when importing example metadata",
+    "class": "security",
+    "severity": "high",
+    "source": "manual-security-review",
+    "body": "## Observed problem\n\nAt fork commit `916c50284b8ca90d698172db01168c47ffec1e22`, `superset/examples/utils.py:261` parses `metadata.yaml` with `yaml.Loader`. That loader can construct arbitrary Python objects. The directory is supplied to `load_configs_from_directory`, so a crafted metadata file can execute a Python constructor before `ImportExamplesCommand` validates the archive.\n\n## Reproduction\n\nThe loader's behavior can be confirmed without a destructive payload:\n\n```bash\npython -c 'import yaml; print(yaml.load(\"!!python/object/apply:builtins.eval [\\\"40+2\\\"]\", Loader=yaml.Loader))'\n```\n\nCurrent output is `42`; a safe loader must reject the Python-specific tag.\n\n## Scope\n\n- `superset/examples/utils.py`\n- `tests/unit_tests/examples/utils_test.py`\n\n## Acceptance criteria\n\n- Example metadata is parsed with a safe YAML loader.\n- Ordinary mapping metadata still reaches `ImportExamplesCommand` unchanged except for the existing removal of `type`.\n- A regression test proves a Python object tag cannot be constructed.\n- `pytest tests/unit_tests/examples/utils_test.py -q` passes.\n- Focused pre-commit checks pass for changed files.\n\n## Non-goals\n\nDo not redesign the example import format, change other YAML call sites, or modify archive handling outside this function."
+  },
+  {
+    "title": "Return false when the system ping executable is unavailable",
+    "class": "reliability",
+    "severity": "medium",
+    "source": "manual-code-review",
+    "body": "## Observed problem\n\nAt fork commit `916c50284b8ca90d698172db01168c47ffec1e22`, `superset/utils/network.py:is_host_up` promises a boolean reachability result and handles `subprocess.TimeoutExpired`, but lets `FileNotFoundError` escape when the container or host does not provide a `ping` executable. Minimal production images commonly omit it, turning a health-style predicate into an unhandled exception.\n\n## Reproduction\n\nAdd a focused unit test that patches `superset.utils.network.subprocess.call` with `side_effect=FileNotFoundError` and calls `is_host_up(\"example.com\")`. The current implementation raises instead of returning a boolean.\n\n## Scope\n\n- `superset/utils/network.py`\n- `tests/unit_tests/utils/test_network.py`\n\n## Acceptance criteria\n\n- `is_host_up` returns `False` when `ping` is missing or cannot be executed.\n- Timeout behavior remains unchanged.\n- The exceptional path is logged without exposing user-controlled data at warning severity.\n- Regression tests cover missing executable and timeout behavior.\n- `pytest tests/unit_tests/utils/test_network.py -q` passes.\n- Focused pre-commit checks pass for changed files.\n\n## Non-goals\n\nDo not replace ICMP with a socket probe, change SSRF validation, or change the public function signature."
+  }
+]

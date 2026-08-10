@@ -1,0 +1,26 @@
+services:
+  remediation-gate:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DEMO_MODE: ${DEMO_MODE:-true}
+      DEVIN_API_KEY: ${DEVIN_API_KEY:-}
+      DEVIN_ORG_ID: ${DEVIN_ORG_ID:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_REPO: ${GITHUB_REPO:-harry1174/superset}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-demo-secret}
+      TRIGGER_LABEL: ${TRIGGER_LABEL:-devin:autofix}
+      MAX_ACU_PER_TASK: ${MAX_ACU_PER_TASK:-10}
+      MAX_CONCURRENT_SESSIONS: ${MAX_CONCURRENT_SESSIONS:-2}
+      DAILY_ACU_BUDGET: ${DAILY_ACU_BUDGET:-40}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-2}
+      SESSION_TIMEOUT_MINUTES: ${SESSION_TIMEOUT_MINUTES:-45}
+      SYNC_POLICY_ON_BOOT: ${SYNC_POLICY_ON_BOOT:-true}
+      DB_PATH: /data/remediation.db
+    volumes:
+      - remediation-state:/data
+    restart: unless-stopped
+
+volumes:
+  remediation-state:

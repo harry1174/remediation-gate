@@ -1,0 +1,93 @@
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+
+
+def _bool(name: str, default: bool) -> bool:
+    return os.getenv(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _int(name: str, default: int) -> int:
+    return int(os.getenv(name, "") or default)
+
+
+def _float(name: str, default: float) -> float:
+    return float(os.getenv(name, "") or default)
+
+
+@dataclass
+class Settings:
+    demo_mode: bool = field(default_factory=lambda: _bool("DEMO_MODE", True))
+
+    devin_api_key: str = field(default_factory=lambda: os.getenv("DEVIN_API_KEY", ""))
+    devin_org_id: str = field(default_factory=lambda: os.getenv("DEVIN_ORG_ID", ""))
+    devin_base_url: str = field(
+        default_factory=lambda: os.getenv("DEVIN_BASE_URL", "https://api.devin.ai")
+    )
+
+    github_token: str = field(default_factory=lambda: os.getenv("GITHUB_TOKEN", ""))
+    github_repo: str = field(
+        default_factory=lambda: os.getenv("GITHUB_REPO", "harry1174/superset")
+    )
+    github_api: str = field(
+        default_factory=lambda: os.getenv("GITHUB_API", "https://api.github.com")
+    )
+    github_webhook_secret: str = field(
+        default_factory=lambda: os.getenv("GITHUB_WEBHOOK_SECRET", "demo-secret")
+    )
+    trigger_label: str = field(
+        default_factory=lambda: os.getenv("TRIGGER_LABEL", "devin:autofix")
+    )
+
+    max_acu_per_task: int = field(default_factory=lambda: _int("MAX_ACU_PER_TASK", 10))
+    max_concurrent_sessions: int = field(
+        default_factory=lambda: _int("MAX_CONCURRENT_SESSIONS", 2)
+    )
+    daily_acu_budget: int = field(default_factory=lambda: _int("DAILY_ACU_BUDGET", 40))
+    poll_interval_seconds: int = field(
+        default_factory=lambda: _int("POLL_INTERVAL_SECONDS", 10)
+    )
+    session_timeout_minutes: int = field(
+        default_factory=lambda: _int("SESSION_TIMEOUT_MINUTES", 45)
+    )
+    sync_policy_on_boot: bool = field(
+        default_factory=lambda: _bool("SYNC_POLICY_ON_BOOT", True)
+    )
+    background_enabled: bool = True
+
+    acu_unit_cost_usd: float = field(
+        default_factory=lambda: _float("ACU_UNIT_COST_USD", 2.25)
+    )
+    engineer_hours_per_merged_pr: float = field(
+        default_factory=lambda: _float("ENGINEER_HOURS_PER_MERGED_PR", 2.5)
+    )
+    engineer_hourly_cost_usd: float = field(
+        default_factory=lambda: _float("ENGINEER_HOURLY_COST_USD", 110)
+    )
+    db_path: str = field(
+        default_factory=lambda: os.getenv("DB_PATH", "data/remediation.db")
+    )
+
+    def validate(self) -> None:
+        if self.demo_mode:
+            return
+        missing = [
+            name
+            for name, value in {
+                "DEVIN_API_KEY": self.devin_api_key,
+                "DEVIN_ORG_ID": self.devin_org_id,
+                "GITHUB_TOKEN": self.github_token,
+                "GITHUB_WEBHOOK_SECRET": self.github_webhook_secret,
+            }.items()
+            if not value
+        ]
+        if missing:
+            raise ValueError(f"live mode requires: {', '.join(missing)}")
+
+    @property
+    def devin_org_url(self) -> str:
+        return f"{self.devin_base_url}/v3/organizations/{self.devin_org_id}"
+
+
+settings = Settings()
