@@ -141,7 +141,12 @@ class Orchestrator:
             except Exception as exc:  # noqa: BLE001
                 log.exception("session reconciliation failed for %s", task["id"])
                 self.store.log(task["id"], "reconcile_error", str(exc))
-        for task in self.store.by_state("pr_open"):
+        for task in self.store.by_state("agent_verified_pr"):
+            try:
+                self._reconcile_checks(task)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("check reconciliation failed for %s: %s", task["id"], exc)
+        for task in self.store.by_state("verified_pr"):
             try:
                 self._reconcile_pr(task)
             except Exception as exc:  # noqa: BLE001
@@ -198,10 +203,15 @@ class Orchestrator:
             and str(pr_url).startswith(f"https://github.com/{task['repo']}/pull/")
         )
         if verified:
+            # Devin's verdict is a claim, not proof. The task waits in
+            # agent_verified_pr until the repository's own checks agree.
+            gated = self.settings.require_ci_checks
             self.store.update(
                 task["id"],
-                state="pr_open",
+                state="agent_verified_pr" if gated else "verified_pr",
                 verification_passed=1,
+                checks_passed=0 if gated else 1,
+                checks_conclusion=None if gated else "not required",
                 verdict=serialized,
                 pr_url=pr_url,
                 pr_state="open",
@@ -209,13 +219,25 @@ class Orchestrator:
                 acus=session["acus_consumed"],
                 failure_reason=None,
             )
-            self.github.add_labels(task["issue_number"], ["devin:verified-pr"])
-            self.github.comment(
-                task["issue_number"],
-                f"Verified pull request opened: {pr_url}\n\n"
-                f"**Evidence:** {verdict.verification.evidence}\n\n"
-                f"**Risk:** {verdict.risk}",
-            )
+            if gated:
+                self.github.comment(
+                    task["issue_number"],
+                    f"Devin opened {pr_url} and reported passing verification.\n\n"
+                    f"**Agent evidence:** {verdict.verification.evidence}\n"
+                    f"**Risk:** {verdict.risk}\n\n"
+                    "Holding until the repository's own checks confirm it. This issue "
+                    "is not marked verified on the agent's word alone.",
+                )
+            else:
+                self.github.add_labels(task["issue_number"], ["devin:verified-pr"])
+                self.github.comment(
+                    task["issue_number"],
+                    f"Verified pull request opened: {pr_url}\n\n"
+                    f"**Evidence:** {verdict.verification.evidence}\n\n"
+                    f"**Risk:** {verdict.risk}\n\n"
+                    "_CI confirmation is disabled (`REQUIRE_CI_CHECKS=false`), so this "
+                    "rests on the agent's self-report._",
+                )
             return
 
         if verdict.outcome == "no_change_needed":
@@ -240,6 +262,70 @@ class Orchestrator:
         self.github.comment(
             task["issue_number"],
             f"Devin stopped without a verified change.\n\n**Outcome:** `{state}`\n**Reason:** {reason}",
+        )
+
+    def _reconcile_checks(self, task: dict[str, Any]) -> None:
+        """Promote to verified_pr only when the repository's own CI agrees.
+
+        This is the gate that separates "the agent says the commands passed" from
+        "the checks that govern every human pull request in this repository
+        passed". The difference between the two is the honest defect rate of the
+        Playbook, and it is reported on the dashboard.
+        """
+        checks = self.github.pr_checks(task["pr_url"])
+        conclusion = checks["conclusion"]
+        self.store.update(task["id"], checks_conclusion=conclusion)
+
+        if conclusion == "success":
+            self.store.update(task["id"], state="verified_pr", checks_passed=1)
+            self.github.add_labels(task["issue_number"], ["devin:verified-pr"])
+            self.github.comment(
+                task["issue_number"],
+                f"CI confirmed the change on `{checks['head_sha']}`. "
+                f"{task['pr_url']} is verified and ready for review.",
+            )
+            return
+
+        if conclusion == "failure":
+            failing = ", ".join(checks["failing"]) or "unnamed check"
+            self.store.update(
+                task["id"],
+                state="failed_verification",
+                checks_passed=0,
+                failure_reason=f"CI checks failed after the agent reported success: {failing}"[:500],
+            )
+            self.github.add_labels(task["issue_number"], ["devin:needs-human"])
+            self.github.comment(
+                task["issue_number"],
+                f"Devin reported passing verification, but the repository's checks "
+                f"disagree on `{checks['head_sha']}`.\n\n**Failing:** {failing}\n\n"
+                f"{task['pr_url']} is left open for a human. This counts as a "
+                "failure, not a success.",
+            )
+            return
+
+        # Still pending, or the head commit has no checks at all. Both are fine
+        # for a while and neither is fine forever.
+        opened_at = task["pr_opened_at"] or time.time()
+        if time.time() - opened_at <= self.settings.checks_grace_minutes * 60:
+            return
+
+        if conclusion == "none":
+            state, reason = (
+                "blocked",
+                "no CI checks reported on the pull request head commit, so the "
+                "agent's verification could not be independently confirmed",
+            )
+        else:
+            state, reason = (
+                "timed_out",
+                f"CI checks did not complete within {self.settings.checks_grace_minutes} minutes",
+            )
+        self.store.update(task["id"], state=state, checks_passed=0, failure_reason=reason)
+        self.github.add_labels(task["issue_number"], ["devin:needs-human"])
+        self.github.comment(
+            task["issue_number"],
+            f"Could not independently confirm {task['pr_url']}.\n\n**Reason:** {reason}",
         )
 
     def _reconcile_pr(self, task: dict[str, Any]) -> None:

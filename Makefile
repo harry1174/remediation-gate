@@ -8,17 +8,17 @@ help:
 	@echo "make seed    Create the two real issues in the Superset fork"
 
 up:
-	docker compose up --build -d
+	docker compose up --build -d --wait --wait-timeout 120
 	@echo "dashboard: http://localhost:8000"
 
 down:
 	docker compose down
 
 demo: up
-	docker compose exec -T remediation-gate python scripts/demo.py
+	docker compose exec -T remediation-gate python scripts/demo.py --duplicate
 
 test:
-	docker compose run --rm --entrypoint "" remediation-gate python -m pytest tests -q
+	docker compose run --build --rm --entrypoint "" remediation-gate python -m pytest tests -q
 
 policy:
 	docker compose run --rm --entrypoint "" remediation-gate python scripts/sync_policy.py

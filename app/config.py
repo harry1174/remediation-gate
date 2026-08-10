@@ -56,6 +56,16 @@ class Settings:
     )
     background_enabled: bool = True
 
+    # Devin's verdict is a claim; the repository's own checks are the evidence.
+    # With this off, a task is promoted on the agent's self-report alone and the
+    # dashboard says so.
+    require_ci_checks: bool = field(
+        default_factory=lambda: _bool("REQUIRE_CI_CHECKS", True)
+    )
+    checks_grace_minutes: int = field(
+        default_factory=lambda: _int("CHECKS_GRACE_MINUTES", 15)
+    )
+
     acu_unit_cost_usd: float = field(
         default_factory=lambda: _float("ACU_UNIT_COST_USD", 2.25)
     )

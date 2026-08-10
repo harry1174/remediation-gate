@@ -9,10 +9,32 @@ from .config import Settings
 from .store import Store, TERMINAL_STATES
 
 
+# A rate over a handful of tasks is noise dressed as a measurement. Below this
+# many resolved tasks the dashboard reports counts instead.
+MIN_SAMPLE_FOR_RATE = 5
+
+
 def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
     tasks = store.all_tasks(1000)
     now = time.time()
-    verified = [task for task in tasks if task["verification_passed"] and task["pr_opened_at"]]
+    # A PR that was verified and then closed without merging is not a success.
+    # Without the pr_state check it would count in `verified` *and* in
+    # `unsuccessful`, landing on both sides of the `resolved` denominator.
+    open_prs = [
+        task for task in tasks if task["pr_opened_at"] and task["pr_state"] != "closed"
+    ]
+    # The agent's own claim, and the repository's independent confirmation of it.
+    # Reporting both is what makes the gap measurable.
+    agent_claimed = [task for task in open_prs if task["verification_passed"]]
+    verified = [task for task in open_prs if task["checks_passed"]]
+    adjudicated = [
+        task
+        for task in agent_claimed
+        if task["checks_conclusion"] in {"success", "failure"}
+    ]
+    overclaimed = [
+        task for task in adjudicated if task["checks_conclusion"] == "failure"
+    ]
     merged = [task for task in tasks if task["state"] == "merged"]
     active = [
         task
@@ -48,15 +70,26 @@ def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
         "funnel": [
             {"stage": "triggered", "count": len(tasks)},
             {"stage": "session", "count": sum(bool(task["session_id"]) for task in tasks)},
+            {"stage": "agent_pr", "count": len(agent_claimed)},
             {"stage": "verified_pr", "count": len(verified)},
             {"stage": "merged", "count": len(merged)},
         ],
         "headline": {
             "active": len(active),
+            "agent_claimed_prs": len(agent_claimed),
             "verified_prs": len(verified),
+            # How often the agent said "verified" and CI disagreed. This is the
+            # Playbook's defect rate, and the only honest way to know whether
+            # editing the Playbook made things better.
+            "ci_adjudicated": len(adjudicated),
+            "agent_overclaims": len(overclaimed),
+            "ci_confirmation": "required" if settings.require_ci_checks else "disabled",
             "merged_prs": len(merged),
             "needs_human": len(unsuccessful),
-            "success_rate": round(len(verified) / resolved * 100, 1) if resolved else 0,
+            "resolved": resolved,
+            "success_rate": round(len(verified) / resolved * 100, 1)
+            if resolved >= MIN_SAMPLE_FOR_RATE
+            else None,
             "median_minutes_to_pr": round(statistics.median(lead_times), 1)
             if lead_times
             else None,
@@ -89,7 +122,12 @@ def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
 
 def _failure_bucket(task: dict[str, Any]) -> str:
     if task["state"] == "failed_verification":
-        return "verification failed"
+        # Two different failures wear the same state: the agent admitted its
+        # commands failed, or the agent claimed success and CI disagreed. The
+        # second one is a Playbook defect and needs its own bucket.
+        if task["checks_conclusion"] == "failure":
+            return "CI contradicted the agent"
+        return "agent reported verification failure"
     if task["state"] == "timed_out":
         return "timed out"
     if task["state"] == "blocked":
@@ -112,6 +150,8 @@ def _task_view(task: dict[str, Any], now: float) -> dict[str, Any]:
         "session_url": task["session_url"],
         "pr_url": task["pr_url"],
         "verification_passed": bool(task["verification_passed"]),
+        "checks_passed": bool(task["checks_passed"]),
+        "checks_conclusion": task["checks_conclusion"],
         "acus": round(float(task["acus"]), 2),
         "elapsed_minutes": round((end - task["created_at"]) / 60, 1),
         "failure_reason": task["failure_reason"],

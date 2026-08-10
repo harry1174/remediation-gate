@@ -17,10 +17,10 @@ LABELS = {
     "devin:autofix": "4A57A8",
     "devin:verified-pr": "168466",
     "devin:needs-human": "B33A3A",
-    "security": "B33A3A",
+    "hardening": "5B6478",
     "reliability": "B56B18",
-    "high": "D73A4A",
     "medium": "E3A21A",
+    "low": "C5D1DE",
 }
 
 

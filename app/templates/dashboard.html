@@ -34,7 +34,7 @@
     .mode.live { color: var(--green); border-color: #abd6c9; background: #eef9f5; }
     section { margin-top: 26px; }
     h2 { margin: 0 0 11px; font-size: 13px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
-    .funnel { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+    .funnel { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
     .stage { padding: 17px; min-height: 92px; border-right: 1px solid var(--rule); }
     .stage:last-child { border-right: 0; }
     .stage-label { color: var(--muted); font-size: 12px; text-transform: uppercase; }
@@ -123,7 +123,7 @@
   function renderFunnel(rows) {
     const root = document.getElementById('funnel');
     root.replaceChildren();
-    const labels = {triggered: 'Triggered', session: 'Devin session', verified_pr: 'Verified PR', merged: 'Merged'};
+    const labels = {triggered: 'Triggered', session: 'Devin session', agent_pr: 'Agent says verified', verified_pr: 'CI confirms', merged: 'Merged'};
     rows.forEach(row => {
       const stage = document.createElement('div');
       stage.className = 'stage';
@@ -147,8 +147,17 @@
     root.replaceChildren();
     addStat(root, 'Cost per merged PR', headline.cost_per_merged_pr_usd == null ? '—' : `$${headline.cost_per_merged_pr_usd}`, 'All ACU spend / merged output');
     addStat(root, 'Median time to PR', headline.median_minutes_to_pr == null ? '—' : `${headline.median_minutes_to_pr}m`, 'Trigger to verified PR');
-    addStat(root, 'Success rate', `${headline.success_rate}%`, `${headline.verified_prs} verified, ${headline.needs_human} handed back`);
+    if (headline.success_rate == null) {
+      addStat(root, 'Outcomes', `${headline.verified_prs} / ${headline.resolved}`, `verified of resolved, ${headline.needs_human} handed back — too few to quote a rate`);
+    } else {
+      addStat(root, 'Success rate', `${headline.success_rate}%`, `${headline.verified_prs} verified, ${headline.needs_human} handed back`);
+    }
     addStat(root, 'Daily budget', `${headline.budget_used_pct}%`, `${headline.total_acus} ACUs observed`);
+    if (headline.ci_confirmation === 'required') {
+      addStat(root, 'Agent overclaims', `${headline.agent_overclaims} / ${headline.ci_adjudicated}`, 'agent said verified, CI disagreed — this is the playbook defect rate');
+    } else {
+      addStat(root, 'CI confirmation', 'disabled', 'verified rests on the agent self-report');
+    }
   }
 
   function link(label, url) {

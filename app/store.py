@@ -26,6 +26,8 @@ TASK_COLUMNS = {
     "pr_url",
     "pr_state",
     "verification_passed",
+    "checks_passed",
+    "checks_conclusion",
     "acus",
     "attempts",
     "verdict",
@@ -56,7 +58,9 @@ CREATE TABLE IF NOT EXISTS tasks (
     knowledge_id          TEXT,
     pr_url                TEXT,
     pr_state              TEXT,
-    verification_passed   INTEGER NOT NULL DEFAULT 0,
+    verification_passed   INTEGER NOT NULL DEFAULT 0,  -- Devin's own claim
+    checks_passed         INTEGER NOT NULL DEFAULT 0,  -- confirmed by repository CI
+    checks_conclusion     TEXT,
     acus                  REAL NOT NULL DEFAULT 0,
     attempts              INTEGER NOT NULL DEFAULT 0,
     verdict               TEXT,
@@ -88,6 +92,23 @@ class Store:
             Path(path).parent.mkdir(parents=True, exist_ok=True)
         with self._conn() as conn:
             conn.executescript(SCHEMA)
+            self._migrate(conn)
+
+    @staticmethod
+    def _migrate(conn: sqlite3.Connection) -> None:
+        """Add columns introduced after a database was first created.
+
+        CREATE TABLE IF NOT EXISTS silently does nothing on an existing table, so
+        without this an upgraded container fails on every query against a volume
+        that predates the CI gate.
+        """
+        existing = {row["name"] for row in conn.execute("PRAGMA table_info(tasks)")}
+        for column, ddl in (
+            ("checks_passed", "INTEGER NOT NULL DEFAULT 0"),
+            ("checks_conclusion", "TEXT"),
+        ):
+            if column not in existing:
+                conn.execute(f"ALTER TABLE tasks ADD COLUMN {column} {ddl}")
 
     @contextmanager
     def _conn(self) -> Iterator[sqlite3.Connection]:

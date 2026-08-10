@@ -133,26 +133,14 @@ def test_unverified_pr_is_not_reported_as_success(tmp_path):
 
 
 def test_merged_only_economics(tmp_path):
-    settings = _settings(tmp_path)
-    store = Store(settings.db_path)
-    orchestrator = Orchestrator(settings, store)
-    task_id = _enqueue(orchestrator)
-    task = store.get(task_id)
-    verdict = DevinVerdict.model_validate(
-        {
-            "outcome": "remediated",
-            "summary": "Fixed",
-            "pr_url": "https://github.com/harry1174/superset/pull/10",
-            "verification": {
-                "commands_run": ["pytest tests/unit_tests/test_network.py -q"],
-                "all_passed": True,
-                "evidence": "14 passed",
-            },
-        }
-    )
-    orchestrator.apply_verdict(
-        task, {"acus_consumed": 4.0, "pr_url": verdict.pr_url}, verdict
-    )
+    settings, store, orchestrator, task_id = _claimed_task(tmp_path)
+    orchestrator.github.pr_checks = lambda url: {
+        "conclusion": "success",
+        "failing": [],
+        "head_sha": "abc123",
+    }
+    orchestrator.reconcile()
+
     before_merge = snapshot(store, settings)["headline"]
     assert before_merge["verified_prs"] == 1
     assert before_merge["cost_per_merged_pr_usd"] is None
@@ -162,6 +150,137 @@ def test_merged_only_economics(tmp_path):
     assert after_merge["merged_prs"] == 1
     assert after_merge["cost_per_merged_pr_usd"] == 9.0
     assert after_merge["assumed_hours_returned"] == 2.5
+
+
+def _remediated(pr_number: int) -> DevinVerdict:
+    return DevinVerdict.model_validate(
+        {
+            "outcome": "remediated",
+            "summary": "Fixed",
+            "pr_url": f"https://github.com/harry1174/superset/pull/{pr_number}",
+            "verification": {
+                "commands_run": ["pytest tests/unit_tests/utils/test_network.py -q"],
+                "all_passed": True,
+                "evidence": "14 passed",
+            },
+        }
+    )
+
+
+def _claimed_task(tmp_path, **overrides):
+    """Drive one task to the point where Devin has claimed a verified PR."""
+    settings = _settings(tmp_path, **overrides)
+    store = Store(settings.db_path)
+    orchestrator = Orchestrator(settings, store)
+    task_id = _enqueue(orchestrator)
+    verdict = _remediated(12)
+    orchestrator.apply_verdict(
+        store.get(task_id), {"acus_consumed": 4.0, "pr_url": verdict.pr_url}, verdict
+    )
+    return settings, store, orchestrator, task_id
+
+
+def test_agent_claim_alone_does_not_reach_verified(tmp_path):
+    """The whole point of the gate: Devin saying so is not evidence."""
+    settings, store, _, task_id = _claimed_task(tmp_path)
+    assert store.get(task_id)["state"] == "agent_verified_pr"
+    headline = snapshot(store, settings)["headline"]
+    assert headline["agent_claimed_prs"] == 1
+    assert headline["verified_prs"] == 0
+
+
+def test_ci_success_promotes_to_verified(tmp_path):
+    settings, store, orchestrator, task_id = _claimed_task(tmp_path)
+    orchestrator.github.pr_checks = lambda url: {
+        "conclusion": "success",
+        "failing": [],
+        "head_sha": "abc123",
+    }
+    orchestrator.reconcile()
+    assert store.get(task_id)["state"] == "verified_pr"
+    assert snapshot(store, settings)["headline"]["verified_prs"] == 1
+
+
+def test_ci_failure_after_agent_claims_success_is_a_failure(tmp_path):
+    """An overclaim must never be counted as a shipped fix."""
+    settings, store, orchestrator, task_id = _claimed_task(tmp_path)
+    orchestrator.github.pr_checks = lambda url: {
+        "conclusion": "failure",
+        "failing": ["remediation-verify / lint"],
+        "head_sha": "abc123",
+    }
+    orchestrator.reconcile()
+    task = store.get(task_id)
+    assert task["state"] == "failed_verification"
+    assert task["checks_passed"] == 0
+    headline = snapshot(store, settings)["headline"]
+    assert headline["verified_prs"] == 0
+    assert headline["agent_overclaims"] == 1
+    assert headline["ci_adjudicated"] == 1
+    taxonomy = snapshot(store, settings)["failure_taxonomy"]
+    assert taxonomy == {"CI contradicted the agent": 1}
+
+
+def test_pending_checks_hold_the_task_without_failing_it(tmp_path):
+    settings, store, orchestrator, task_id = _claimed_task(tmp_path)
+    orchestrator.github.pr_checks = lambda url: {
+        "conclusion": "pending",
+        "failing": [],
+        "head_sha": "abc123",
+    }
+    orchestrator.reconcile()
+    assert store.get(task_id)["state"] == "agent_verified_pr"
+    assert snapshot(store, settings)["headline"]["needs_human"] == 0
+
+
+def test_gate_can_be_disabled_and_says_so(tmp_path):
+    """With no CI available, be explicit that verified means self-reported."""
+    settings, store, _, task_id = _claimed_task(tmp_path, require_ci_checks=False)
+    assert store.get(task_id)["state"] == "verified_pr"
+    headline = snapshot(store, settings)["headline"]
+    assert headline["verified_prs"] == 1
+    assert headline["ci_confirmation"] == "disabled"
+
+
+def test_verified_pr_closed_without_merging_is_counted_once_as_a_failure(tmp_path):
+    """A closed PR must leave the verified funnel.
+
+    `verification_passed` and `pr_opened_at` both persist after the PR is closed,
+    so without the pr_state check the task lands in `verified` and in
+    `unsuccessful` at the same time and is counted twice in the denominator.
+    """
+    settings, store, orchestrator, task_id = _claimed_task(tmp_path)
+    orchestrator.github.pr_checks = lambda url: {
+        "conclusion": "success",
+        "failing": [],
+        "head_sha": "abc123",
+    }
+    orchestrator.reconcile()
+    assert snapshot(store, settings)["headline"]["verified_prs"] == 1
+
+    store.update(
+        task_id,
+        state="failed",
+        pr_state="closed",
+        failure_reason="verified PR was closed without merging",
+    )
+    headline = snapshot(store, settings)["headline"]
+    assert headline["verified_prs"] == 0
+    assert headline["needs_human"] == 1
+    assert headline["resolved"] == 1
+
+
+def test_rate_is_withheld_until_the_sample_supports_one(tmp_path):
+    """Two tasks do not make a percentage. Report counts instead."""
+    settings = _settings(tmp_path)
+    store = Store(settings.db_path)
+    orchestrator = Orchestrator(settings, store)
+    for number in (1, 2):
+        task_id = _enqueue(orchestrator, number)
+        store.update(task_id, state="blocked", failure_reason="needs a decision")
+    headline = snapshot(store, settings)["headline"]
+    assert headline["success_rate"] is None
+    assert headline["resolved"] == 2
 
 
 def test_budget_blocks_new_session(tmp_path):

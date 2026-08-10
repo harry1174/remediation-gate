@@ -84,21 +84,80 @@ class GitHubClient:
         response.raise_for_status()
         return response.json()
 
-    def pr_state(self, pr_url: str) -> str | None:
-        if self.settings.demo_mode:
-            first_seen = self._mock_pr_seen.setdefault(pr_url, time.time())
-            return "merged" if time.time() - first_seen >= 8 else "open"
-
+    def _pr_number(self, pr_url: str) -> str | None:
+        """Extract the PR number, refusing anything outside the configured repo."""
         parsed = urlparse(pr_url)
         parts = parsed.path.strip("/").split("/")
         if parsed.netloc != "github.com" or len(parts) != 4 or parts[2] != "pull":
             log.warning("ignoring malformed PR URL: %s", pr_url)
             return None
-        repo = f"{parts[0]}/{parts[1]}"
-        if repo.lower() != self.settings.github_repo.lower():
+        if f"{parts[0]}/{parts[1]}".lower() != self.settings.github_repo.lower():
             log.warning("ignoring PR outside configured repository: %s", pr_url)
             return None
-        response = self._http.get(self._url(f"/pulls/{parts[3]}"))
+        return parts[3]
+
+    def pr_state(self, pr_url: str) -> str | None:
+        if self.settings.demo_mode:
+            first_seen = self._mock_pr_seen.setdefault(pr_url, time.time())
+            return "merged" if time.time() - first_seen >= 6 else "open"
+
+        number = self._pr_number(pr_url)
+        if number is None:
+            return None
+        response = self._http.get(self._url(f"/pulls/{number}"))
         response.raise_for_status()
         payload = response.json()
         return "merged" if payload.get("merged_at") else payload.get("state")
+
+    def pr_checks(self, pr_url: str) -> dict[str, Any]:
+        """Independent verification: what the repository's own CI says.
+
+        Returns ``{"conclusion": ..., "failing": [...], "head_sha": ...}`` where
+        conclusion is one of:
+
+          none      the head commit has no check runs at all
+          pending   at least one check run has not completed
+          success   every completed check run passed or was neutral/skipped
+          failure   at least one check run failed
+        """
+        if self.settings.demo_mode:
+            first_seen = self._mock_pr_seen.setdefault(pr_url, time.time())
+            elapsed = time.time() - first_seen
+            return {
+                "conclusion": "success" if elapsed >= 3 else "pending",
+                "failing": [],
+                "head_sha": "demo-head-sha",
+            }
+
+        number = self._pr_number(pr_url)
+        if number is None:
+            return {"conclusion": "none", "failing": [], "head_sha": None}
+
+        pull = self._http.get(self._url(f"/pulls/{number}"))
+        pull.raise_for_status()
+        head_sha = pull.json().get("head", {}).get("sha")
+        if not head_sha:
+            return {"conclusion": "none", "failing": [], "head_sha": None}
+
+        runs = self._http.get(
+            self._url(f"/commits/{head_sha}/check-runs"), params={"per_page": 100}
+        )
+        runs.raise_for_status()
+        check_runs = runs.json().get("check_runs", [])
+        if not check_runs:
+            return {"conclusion": "none", "failing": [], "head_sha": head_sha}
+
+        if any(run.get("status") != "completed" for run in check_runs):
+            return {"conclusion": "pending", "failing": [], "head_sha": head_sha}
+
+        # neutral and skipped are not failures; anything else that is not a pass is.
+        failing = [
+            run.get("name", "unnamed check")
+            for run in check_runs
+            if run.get("conclusion") not in {"success", "neutral", "skipped"}
+        ]
+        return {
+            "conclusion": "failure" if failing else "success",
+            "failing": failing,
+            "head_sha": head_sha,
+        }

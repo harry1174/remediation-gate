@@ -19,7 +19,7 @@ RUN mkdir -p /data && chown -R app:app /data /srv
 USER app
 
 EXPOSE 8000
-HEALTHCHECK --interval=15s --timeout=4s --start-period=8s \
+HEALTHCHECK --interval=3s --timeout=4s --start-period=2s --retries=10 \
   CMD python -c "import httpx,sys; sys.exit(0 if httpx.get('http://localhost:8000/healthz').status_code == 200 else 1)"
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

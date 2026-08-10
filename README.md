@@ -47,9 +47,16 @@ No credentials are required.
 
 ```bash
 cp .env.example .env
-docker compose up --build -d
-docker compose exec remediation-gate python scripts/demo.py --duplicate
+make demo
 open http://localhost:8000
+```
+
+`make demo` waits for the container to report healthy before replaying the
+webhooks, so it is safe to run from a cold start. The equivalent long form is:
+
+```bash
+docker compose up --build -d --wait
+docker compose exec remediation-gate python scripts/demo.py --duplicate
 ```
 
 The tasks progress from queued to session, verified PR, and merged in roughly
