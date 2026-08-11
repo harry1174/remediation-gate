@@ -168,6 +168,10 @@ def _scenarios(
 
 
 def _failure_bucket(task: dict[str, Any]) -> str:
+    reason = (task["failure_reason"] or "").lower()
+    if "billing or quota" in reason:
+        # Not a remediation failure at all, and not fixable by editing policy.
+        return "billing or quota"
     if task["state"] == "failed_verification":
         # Two different failures wear the same state: the agent admitted its
         # commands failed, or the agent claimed success and CI disagreed. The

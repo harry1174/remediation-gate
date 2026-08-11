@@ -13,7 +13,7 @@ from app.metrics import snapshot
 from app.models import DevinVerdict
 from app.orchestrator import Orchestrator
 from app.policy import load_playbook
-from app.store import Store
+from app.store import Store, TERMINAL_STATES
 
 
 def _settings(tmp_path, **overrides) -> Settings:
@@ -311,6 +311,83 @@ def test_rate_is_withheld_until_the_sample_supports_one(tmp_path):
     headline = snapshot(store, settings)["headline"]
     assert headline["success_rate"] is None
     assert headline["resolved"] == 2
+
+
+def _dispatched(tmp_path, **overrides):
+    settings = _settings(tmp_path, **overrides)
+    store = Store(settings.db_path)
+    orchestrator = Orchestrator(settings, store)
+    task_id = _enqueue(orchestrator)
+    orchestrator.playbook_id = "playbook-test"
+    orchestrator.knowledge_id = "note-test"
+    orchestrator.dispatch()
+    return settings, store, orchestrator, task_id
+
+
+def test_timeout_terminates_the_remote_session(tmp_path):
+    """Abandoning a task without stopping the agent leaves it running on
+    someone else's budget."""
+    settings, store, orchestrator, task_id = _dispatched(
+        tmp_path, session_timeout_minutes=0
+    )
+    terminated = {}
+    orchestrator.devin.terminate_session = lambda sid: (
+        terminated.update(session_id=sid) or {"acus_consumed": 7.5}
+    )
+    orchestrator.reconcile()
+
+    task = store.get(task_id)
+    assert task["state"] == "timed_out"
+    assert terminated["session_id"] == task["session_id"]
+    # Final ACU count comes from the termination response, not the last poll.
+    assert task["acus"] == 7.5
+    assert store.has_event(task_id, "session_terminated")
+
+
+def test_billing_suspension_is_not_reported_as_a_remediation_failure(tmp_path):
+    settings, store, orchestrator, task_id = _dispatched(tmp_path)
+    orchestrator.devin.get_session = lambda sid: {
+        "status": "suspended",
+        "status_detail": "out_of_credits",
+        "acus_consumed": 2.0,
+        "structured_output": None,
+        "url": "https://app.devin.ai/sessions/x",
+        "pr_url": None,
+    }
+    orchestrator.devin.terminate_session = lambda sid: {"acus_consumed": 2.0}
+    orchestrator.reconcile()
+
+    assert store.get(task_id)["state"] == "failed"
+    assert snapshot(store, settings)["failure_taxonomy"] == {"billing or quota": 1}
+
+
+def test_session_awaiting_a_person_stays_alive_and_is_announced_once(tmp_path):
+    """waiting_for_approval is recoverable. Killing it would throw away work a
+    human could rescue; auto-resuming would spend ACUs nobody authorised."""
+    settings, store, orchestrator, task_id = _dispatched(tmp_path)
+    comments = []
+    orchestrator.github.comment = lambda number, body: comments.append(body)
+    orchestrator.devin.get_session = lambda sid: {
+        "status": "running",
+        "status_detail": "waiting_for_approval",
+        "acus_consumed": 1.0,
+        "structured_output": None,
+        "url": "https://app.devin.ai/sessions/x",
+        "pr_url": None,
+    }
+    orchestrator.reconcile()
+    orchestrator.reconcile()
+    orchestrator.reconcile()
+
+    assert store.get(task_id)["state"] not in TERMINAL_STATES
+    assert len(comments) == 1, "the operator should be told once, not every poll"
+    assert "waiting_for_approval" in comments[0]
+
+
+def test_session_records_the_mode_it_ran_in(tmp_path):
+    """Unit economics are only reproducible if the mode is pinned and recorded."""
+    _, store, _, task_id = _dispatched(tmp_path)
+    assert store.get(task_id)["devin_mode"] == "normal"
 
 
 def test_budget_blocks_new_session(tmp_path):

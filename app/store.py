@@ -29,6 +29,7 @@ TASK_COLUMNS = {
     "checks_passed",
     "checks_conclusion",
     "checks_confirmed_at",
+    "devin_mode",
     "acus",
     "attempts",
     "verdict",
@@ -63,6 +64,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     checks_passed         INTEGER NOT NULL DEFAULT 0,  -- confirmed by repository CI
     checks_conclusion     TEXT,
     checks_confirmed_at   REAL,
+    devin_mode            TEXT,
     acus                  REAL NOT NULL DEFAULT 0,
     attempts              INTEGER NOT NULL DEFAULT 0,
     verdict               TEXT,
@@ -109,6 +111,7 @@ class Store:
             ("checks_passed", "INTEGER NOT NULL DEFAULT 0"),
             ("checks_conclusion", "TEXT"),
             ("checks_confirmed_at", "REAL"),
+            ("devin_mode", "TEXT"),
         ):
             if column not in existing:
                 conn.execute(f"ALTER TABLE tasks ADD COLUMN {column} {ddl}")
@@ -192,6 +195,16 @@ class Store:
                 "INSERT INTO events(task_id, kind, detail, ts) VALUES (?, ?, ?, ?)",
                 (task_id, kind, (detail or "")[:3000], time.time()),
             )
+
+    def has_event(self, task_id: str, kind: str) -> bool:
+        """Used to notify once. A session parked awaiting approval is polled
+        every few seconds; the operator should hear about it exactly once."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM events WHERE task_id = ? AND kind = ? LIMIT 1",
+                (task_id, kind),
+            ).fetchone()
+        return row is not None
 
     def get(self, task_id: str) -> dict[str, Any] | None:
         with self._conn() as conn:

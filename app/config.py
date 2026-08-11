@@ -59,6 +59,11 @@ class Settings:
     # Devin's verdict is a claim; the repository's own checks are the evidence.
     # With this off, a task is promoted on the agent's self-report alone and the
     # dashboard says so.
+    # Pinned rather than inherited from the organization default, so behaviour
+    # and unit economics cannot change outside this application. Recorded per
+    # task so a cost figure can be reproduced later.
+    devin_mode: str = field(default_factory=lambda: os.getenv("DEVIN_MODE", "normal"))
+
     require_ci_checks: bool = field(
         default_factory=lambda: _bool("REQUIRE_CI_CHECKS", True)
     )

@@ -74,11 +74,30 @@ class DevinClient:
             "playbook_id": playbook_id,
             "knowledge_ids": [knowledge_id],
             "max_acu_limit": self.settings.max_acu_per_task,
+            "devin_mode": self.settings.devin_mode,
             "structured_output_required": True,
             "structured_output_schema": DevinVerdict.model_json_schema(),
         }
         response = self._post(f"{self.settings.devin_org_url}/sessions", payload)
         return self._normalise(response)
+
+    def terminate_session(self, session_id: str) -> dict[str, Any]:
+        """Stop a session this control plane has given up on.
+
+        Termination is irreversible, so it is only called once a task has hit a
+        terminal state locally. `archive=true` keeps the transcript readable as
+        evidence. The response carries the final ACU count, which is more
+        trustworthy than the last figure polling happened to observe.
+        """
+        if self.settings.demo_mode:
+            session = self._mock_sessions.get(session_id, {})
+            return {"acus_consumed": float(session.get("acus", 0)), "status": "exit"}
+        response = self._http.delete(
+            f"{self.settings.devin_org_url}/sessions/{session_id}",
+            params={"archive": "true"},
+        )
+        response.raise_for_status()
+        return self._normalise(response.json())
 
     def get_session(self, session_id: str) -> dict[str, Any]:
         if self.settings.demo_mode:

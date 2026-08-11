@@ -17,6 +17,7 @@ services:
       POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-2}
       SESSION_TIMEOUT_MINUTES: ${SESSION_TIMEOUT_MINUTES:-45}
       SYNC_POLICY_ON_BOOT: ${SYNC_POLICY_ON_BOOT:-true}
+      DEVIN_MODE: ${DEVIN_MODE:-normal}
       REQUIRE_CI_CHECKS: ${REQUIRE_CI_CHECKS:-true}
       CHECKS_GRACE_MINUTES: ${CHECKS_GRACE_MINUTES:-15}
       # Inputs to the modeled panel only; they never affect a measured number.

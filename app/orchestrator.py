@@ -124,6 +124,7 @@ class Orchestrator:
             session_url=session["url"],
             playbook_id=self.playbook_id,
             knowledge_id=self.knowledge_id,
+            devin_mode=self.settings.devin_mode,
             dispatched_at=time.time(),
             failure_reason=None,
         )
@@ -157,16 +158,22 @@ class Orchestrator:
         self.store.update(task["id"], acus=session["acus_consumed"])
 
         if time.time() - task["dispatched_at"] > self.settings.session_timeout_minutes * 60:
-            self.store.update(
-                task["id"],
-                state="timed_out",
-                failure_reason=f"no terminal state after {self.settings.session_timeout_minutes} minutes",
+            self._give_up(
+                task,
+                "timed_out",
+                f"no terminal state after {self.settings.session_timeout_minutes} minutes",
             )
-            self.github.add_labels(task["issue_number"], ["devin:needs-human"])
             return
 
         if session["status"] == "running" and task["state"] != "running":
             self.store.update(task["id"], state="running")
+
+        # Devin's status_detail distinguishes "stuck waiting on a person" from
+        # "stopped because the account is out of money". Both used to look
+        # identical from here: a session that simply never finished.
+        if self._handle_status_detail(task, session):
+            return
+
         if session["status"] not in {"exit", "error", "suspended"}:
             return
 
@@ -189,6 +196,75 @@ class Orchestrator:
             )
             return
         self.apply_verdict(task, session, verdict)
+
+    # Suspensions that mean "the account cannot pay", not "the work failed".
+    # Worth their own bucket: no amount of Playbook editing fixes them.
+    BILLING_DETAILS = {
+        "out_of_credits",
+        "out_of_quota",
+        "no_quota_allocation",
+        "payment_declined",
+        "usage_limit_exceeded",
+        "org_usage_limit_exceeded",
+        "user_usage_limit_exceeded",
+        "total_session_limit_exceeded",
+    }
+    # Recoverable by a human, so the task stays alive and the timeout is the
+    # backstop. Auto-resuming would spend ACUs nobody authorised, and the whole
+    # premise here is that a human authorises spend.
+    AWAITING_HUMAN_DETAILS = {"waiting_for_user", "waiting_for_approval", "inactivity"}
+
+    def _handle_status_detail(
+        self, task: dict[str, Any], session: dict[str, Any]
+    ) -> bool:
+        """Return True when the caller should stop processing this task."""
+        detail = session.get("status_detail")
+        if not detail:
+            return False
+
+        if detail in self.BILLING_DETAILS:
+            self._give_up(task, "failed", f"Devin stopped on billing or quota: {detail}")
+            return True
+
+        if detail in self.AWAITING_HUMAN_DETAILS:
+            kind = f"awaiting_human:{detail}"
+            if not self.store.has_event(task["id"], kind):
+                self.store.log(task["id"], kind, session.get("url"))
+                self.github.comment(
+                    task["issue_number"],
+                    f"Devin is paused and needs a person: `{detail}`.\n\n"
+                    f"Open the session to unblock it: {session.get('url')}\n\n"
+                    "The task is still alive and will resume as soon as you act. "
+                    "It is not auto-resumed, because resuming spends ACUs and "
+                    "spending is a human decision here.",
+                )
+            return True
+        return False
+
+    def _give_up(self, task: dict[str, Any], state: str, reason: str) -> None:
+        """Terminate the remote session, then record the local outcome.
+
+        A control plane that abandons a task without stopping the agent is
+        leaving a process running on someone else's budget. The API returns the
+        final ACU count on termination, which is more trustworthy than whatever
+        the last poll happened to see.
+        """
+        acus = task["acus"]
+        try:
+            final = self.devin.terminate_session(task["session_id"])
+            acus = float(final.get("acus_consumed") or acus)
+            self.store.log(task["id"], "session_terminated", {"acus": acus})
+        except Exception as exc:  # noqa: BLE001
+            log.warning("could not terminate session for %s: %s", task["id"], exc)
+            self.store.log(task["id"], "terminate_failed", str(exc))
+        self.store.update(
+            task["id"], state=state, failure_reason=reason[:500], acus=acus
+        )
+        self.github.add_labels(task["issue_number"], ["devin:needs-human"])
+        self.github.comment(
+            task["issue_number"],
+            f"Stopped and terminated the Devin session.\n\n**Reason:** {reason}",
+        )
 
     def apply_verdict(
         self, task: dict[str, Any], session: dict[str, Any], verdict: DevinVerdict

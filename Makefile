@@ -1,4 +1,4 @@
-.PHONY: help up down demo test policy seed logs
+.PHONY: help up down demo test policy seed logs preflight
 
 help:
 	@echo "make up      Build and start the service"
@@ -6,6 +6,7 @@ help:
 	@echo "make test    Run the focused test suite in Docker"
 	@echo "make policy  Sync the Playbook and Knowledge note to Devin"
 	@echo "make seed    Create the two real issues in the Superset fork"
+	@echo "make preflight  Read-only readiness check before spending ACUs"
 
 up:
 	docker compose up --build -d --wait --wait-timeout 120
@@ -19,6 +20,9 @@ demo: up
 
 test:
 	docker compose run --build --rm --entrypoint "" remediation-gate python -m pytest tests -q
+
+preflight:
+	docker compose run --build --rm --entrypoint "" remediation-gate python scripts/preflight.py
 
 policy:
 	docker compose run --rm --entrypoint "" remediation-gate python scripts/sync_policy.py
