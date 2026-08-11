@@ -160,6 +160,25 @@ Add `devin:autofix` to one seeded issue. The application comments with the
 session URL, polls Devin to a terminal state, validates the structured output,
 and comments again only after verification passes.
 
+## The decisions the brief didn't make for you
+
+"Build an event-driven automation that remediates issues" leaves every operating
+question open. Those questions are the actual design work, so they are answered
+explicitly rather than left implicit in the code.
+
+| Question | Decision | Where it lives |
+|---|---|---|
+| What authorizes spending money? | A human adding `devin:autofix` to a triaged issue. It reuses an approval step every team already has, so nobody learns a new one. | `main.py` webhook filter |
+| What is a duplicate? | One task per `repo#issue`, claimed with `INSERT OR IGNORE`. A redelivered webhook, a label removed and re-added, and an overlapping scan all collapse to one session. | `store.claim_task` |
+| How much can one task spend? | A per-session ACU cap plus a daily budget, checked at admission rather than after the fact. The label is the authorization; the caps are its blast radius. | `orchestrator.dispatch` |
+| What counts as done? | Not a PR URL. Not the agent's word. Every completed check-run on the PR head must pass. | `_reconcile_checks` |
+| Who decides if the fix is even right? | Devin. It is instructed to return `no_change_needed` if the finding doesn't reproduce, and `blocked` if the safe fix needs a product decision. | Playbook `## Specifications` |
+| When does it stop? | Session timeout, CI grace window, and a cap on dispatch retries. Every path terminates. | `Settings`, `TERMINAL_STATES` |
+| What is ambiguous work turned into? | A contract with observed problem, reproduction, scope, acceptance criteria, verification commands and non-goals. The non-goals are what keep diffs reviewable. | `issues/findings.json` |
+| What if the policy is wrong? | It's a Devin Playbook, edited in the web app by the customer's tech lead — not a redeploy of this service. | `policy.py` |
+
+The state machine is the residue of those decisions:
+
 ## State and success model
 
 ```text
