@@ -101,6 +101,26 @@ def test_duplicate_issue_never_creates_two_tasks(tmp_path):
     assert len(app.state.store.all_tasks()) == 1
 
 
+def test_every_seeded_issue_class_is_recognised():
+    """A class label the classifier does not know falls through to `quality`,
+    so the dashboard would contradict the label on the issue itself."""
+    import json
+    from pathlib import Path
+
+    from app.main import _classify
+
+    findings = json.loads(
+        (Path(__file__).resolve().parents[1] / "issues" / "findings.json").read_text()
+    )
+    for finding in findings:
+        issue = {
+            "labels": [{"name": finding["class"]}, {"name": finding["severity"]}]
+        }
+        issue_class, severity = _classify(issue, "devin:autofix")
+        assert issue_class == finding["class"], finding["title"]
+        assert severity == finding["severity"], finding["title"]
+
+
 def test_playbook_macro_matches_v3_contract():
     assert load_playbook()["macro"] == "!remediate_issue"
 

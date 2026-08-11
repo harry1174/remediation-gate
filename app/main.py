@@ -32,7 +32,18 @@ def _classify(issue: dict[str, Any], trigger_label: str) -> tuple[str, str]:
     }
     labels.discard(trigger_label.lower())
     issue_class = next(
-        (name for name in ("security", "reliability", "dependency", "quality", "test") if name in labels),
+        (
+            name
+            for name in (
+                "security",
+                "hardening",
+                "reliability",
+                "dependency",
+                "quality",
+                "test",
+            )
+            if name in labels
+        ),
         "quality",
     )
     severity = next(
