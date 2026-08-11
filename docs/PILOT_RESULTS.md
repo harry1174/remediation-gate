@@ -26,21 +26,34 @@ so in as many words. Once measured, set the value and
 
 ## Per-issue evidence
 
+Both issues were triggered by a human adding `devin:autofix`. Neither PR was
+edited by hand.
+
 | | Issue #2 — `is_host_up` | Issue #1 — YAML loader |
 |---|---|---|
-| Issue URL | https://github.com/harry1174/superset/issues/2 | https://github.com/harry1174/superset/issues/1 |
+| Issue | [#2](https://github.com/harry1174/superset/issues/2) | [#1](https://github.com/harry1174/superset/issues/1) |
 | Class / severity | reliability / medium | hardening / low |
-| Triggered at | | |
-| Devin session URL | | |
-| Agent claimed a PR at | | |
-| PR URL | | |
-| CI run URL | | |
-| CI confirmed at | | |
-| Merged at | | |
-| ACUs consumed | | |
-| Trigger → CI-verified (min) | | |
-| CI green first attempt | | |
-| Outcome | | |
+| Devin session | [`9eb71c32`](https://app.devin.ai/sessions/9eb71c32f7df4daa9b825e939c16517f) | [`77978d24`](https://app.devin.ai/sessions/77978d245aaf4c2ea64be6d9be726dfe) |
+| Pull request | [#4](https://github.com/harry1174/superset/pull/4) | [#5](https://github.com/harry1174/superset/pull/5) |
+| CI result | lint 56s + tests 1m43s, both green | lint 56s + tests 1m44s, both green |
+| Trigger → CI-verified | 15.6 min | **11.6 min** |
+| CI green first attempt | yes | yes |
+| Agent overclaim | no | no |
+| Suppressions added | none | none |
+| Outcome | **merged** | **verified_pr** |
+| Human intervention | one nudge to emit the verdict | **none** |
+
+Aggregate: 2 triggered, 2 sessions, 2 agent-claimed PRs, 2 CI-verified, 1 merged,
+0 overclaims, 0 handed back. Median trigger to CI-verified: **13.6 min**.
+
+Rates are withheld below five resolved tasks, so these stay as counts.
+
+### Corroboration
+
+Devin's own analytics, which this project can only read, reports **2 sessions
+created via API, 2 pull requests created, 1 merged** over the same window — and
+zero sessions started by a human. That is independent of the SQLite database
+every other figure here comes from.
 
 ## Human time
 
@@ -66,9 +79,39 @@ failing pull request, adjudicated by the same code path as a real one.
 | Task state after adjudication | |
 | Counted as an agent overclaim | |
 
+Not yet run. Both real pull requests passed CI first time, so the gate has not
+been observed rejecting anything — only accepting. A deliberately failing pull
+request is the only way to demonstrate it discriminates.
+
 ## What this pilot does not show
 
 - Throughput. Two issues support no rate.
 - Reduced vulnerabilities, incidents or regressions. None were measured.
 - Reviewer rework. Both pull requests were reviewed by their own author.
 - Generalisation. One repository, one playbook, one issue class each.
+
+## What the runs taught us
+
+Two failure modes surfaced live that no amount of mock testing would have found.
+
+**`structured_output_required` does not make a session exit.** Both runs ended
+with Devin producing a valid verdict and then parking in `waiting_for_user`.
+Reconciliation originally checked session status before looking for a verdict, so
+run one sat with finished, merge-ready work behind a state machine waiting for an
+exit that never came.
+
+Instructing the agent did not fix it. Playbook step 9 was amended to say end the
+session after returning the verdict; run two parked anyway. Policy successfully
+governs what Devin *produces* — the diff, the tests, the refusal to add a
+replacement suppression — but did not change when the session terminates. The
+orchestrator acting on a verdict the moment one exists is what fixed it.
+
+That gap is the argument for the control plane: instructing an agent is not the
+same as controlling it.
+
+**A permission gap degraded silently.** A 403 on the status comment produced a
+log warning nobody was watching, and run one completed with no visible trace of
+the automation on the issue. Failed writes still never fail a remediation, but
+they now surface in `/healthz`, and preflight probes `Issues: write` by posting a
+comment and deleting it — the only honest check, since fine-grained tokens expose
+no permission introspection.
