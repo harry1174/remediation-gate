@@ -138,7 +138,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 (task["created_at"] for task in store.all_tasks(1000)),
                 default=time.time(),
             )
-            _corroboration["data"] = orchestrator.devin.org_corroboration(oldest)
+            _corroboration["data"] = orchestrator.devin.org_corroboration(
+                oldest, playbook_id=orchestrator.playbook_id
+            )
             _corroboration["at"] = time.time()
         return _corroboration["data"] or {"available": False, "reason": "no data"}
 

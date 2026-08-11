@@ -81,20 +81,32 @@ class DevinClient:
         response = self._post(f"{self.settings.devin_org_url}/sessions", payload)
         return self._normalise(response)
 
-    def org_corroboration(self, since: float) -> dict[str, Any]:
+    def org_corroboration(
+        self, since: float, playbook_id: str | None = None
+    ) -> dict[str, Any]:
         """Devin's own count of what this automation did.
 
-        The dashboard's numbers come from a database this project controls. These
-        come from Devin's analytics, which it does not. `origin.api` isolates
-        sessions this service created from anything a human started in the web
-        app, so the two views can be compared without conflating them.
+        The dashboard's numbers come from a database this project controls.
+        These come from Devin's analytics, which it does not.
+
+        Filtered by playbook so the comparison is attributable rather than
+        merely plausible. Without it the query returns every API-originated
+        session in the organisation — nine in this account against four from
+        this service — which happens to be harmless in an isolated org and
+        wrong in a shared one. A bogus playbook id returns 404, so the filter
+        is demonstrably applied rather than silently ignored.
 
         ACU consumption is deliberately absent: it reports 0.0 on accounts billed
         in credits, and a zero that means "not measured" is worse than no number.
         """
         if self.settings.demo_mode:
             return {"available": False, "reason": "demo mode"}
-        params = {"time_after": int(since), "time_before": int(time.time()) + 86400}
+        params: dict[str, Any] = {
+            "time_after": int(since),
+            "time_before": int(time.time()) + 86400,
+        }
+        if playbook_id:
+            params["playbook_id"] = playbook_id
         try:
             sessions = self._http.get(
                 f"{self.settings.devin_org_url}/metrics/sessions",
@@ -112,6 +124,7 @@ class DevinClient:
         pr_data = prs.json()
         return {
             "available": True,
+            "scoped_to_playbook": bool(playbook_id),
             "api_sessions": by_origin.get("api", 0),
             "human_sessions": sum(
                 count for origin, count in by_origin.items() if origin != "api"

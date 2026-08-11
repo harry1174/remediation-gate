@@ -88,10 +88,26 @@ master.
 Rates are withheld below five resolved tasks, so these stay as counts — two
 results do not make a percentage.
 
-**Corroboration.** Devin's own analytics, which this project can only read,
-reports 2 sessions created via API, 2 pull requests created and 2 merged over
-the same window, and zero sessions started by a human. Every other figure here
-comes from a SQLite database this project owns; that one does not.
+**Three sources, and they are not interchangeable.**
+
+| Source | What it is | What it proves |
+|---|---|---|
+| This service's SQLite | operational ledger | what the control plane believes |
+| Devin analytics | vendor-side record of the same activity | that the sessions and pull requests exist |
+| GitHub Actions check-runs | third party to both | that the change is technically correct |
+
+Devin analytics corroborates *activity*, not correctness — it is the vendor's own
+record of the vendor's own agent, so treating it as independent verification
+would be a category error. GitHub Actions is the only one of the three that is
+independent of both the agent and this service, which is why the gate keys on it
+and nothing else.
+
+The counts reconcile: 4 sessions, 3 pull requests created, 2 merged, on both
+sides. The analytics query is filtered by `playbook_id` — without it the endpoint
+returns every API-originated session in the organisation (nine in this account
+against four from this service), which is harmless in an isolated org and wrong
+in a shared one. A bogus playbook id returns 404, so the filter is demonstrably
+applied rather than silently ignored.
 
 **The rejection path has been exercised, by fault injection.** Both real pull
 requests passed first time, so `failed_verification` had never executed outside
