@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -122,6 +123,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/metrics")
     def metrics() -> JSONResponse:
         return JSONResponse(snapshot(store, active_settings))
+
+    _corroboration: dict[str, Any] = {"at": 0.0, "data": None}
+
+    @app.get("/api/corroboration")
+    def corroboration() -> dict[str, Any]:
+        """Devin's own view of what this automation did.
+
+        Cached: the dashboard polls every few seconds and this is an external
+        API call that nothing depends on being fresh to the second.
+        """
+        if time.time() - _corroboration["at"] > 60:
+            oldest = min(
+                (task["created_at"] for task in store.all_tasks(1000)),
+                default=time.time(),
+            )
+            _corroboration["data"] = orchestrator.devin.org_corroboration(oldest)
+            _corroboration["at"] = time.time()
+        return _corroboration["data"] or {"available": False, "reason": "no data"}
 
     @app.get("/healthz")
     def health() -> dict[str, Any]:

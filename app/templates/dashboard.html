@@ -100,6 +100,11 @@
   </section>
 
   <section>
+    <h2>Corroboration &mdash; Devin's own analytics, not this database</h2>
+    <div class="panel"><p class="empty" id="corroboration">Checking...</p></div>
+  </section>
+
+  <section>
     <h2>Modeled &mdash; planning scenarios, not observed savings</h2>
     <div class="panel">
       <table>
@@ -185,6 +190,24 @@
     });
   }
 
+  async function renderCorroboration() {
+    const node = document.getElementById('corroboration');
+    let c;
+    try { c = await (await fetch('/api/corroboration')).json(); }
+    catch (e) { node.textContent = 'Unavailable.'; return; }
+    if (!c.available) {
+      node.textContent = `Unavailable: ${c.reason}. The figures above come from this service's own database.`;
+      return;
+    }
+    node.textContent =
+      `Devin reports ${c.api_sessions} session(s) created via API by this service `
+      + `(${c.human_sessions} started by a human in the web app), `
+      + `${c.prs_created} pull request(s) created and ${c.prs_merged} merged, over the same window. `
+      + `Those numbers come from Devin's analytics, which this project cannot write to. `
+      + `ACU consumption is omitted: it reports zero on accounts billed in credits, and a zero meaning `
+      + `"not measured" is worse than no number.`;
+  }
+
   function link(label, url) {
     const anchor = document.createElement('a');
     anchor.textContent = label;
@@ -234,6 +257,7 @@
       renderFunnel(data.funnel);
       renderStats(data.headline);
       renderModeled(data.modeled, data.headline.merged_prs);
+      renderCorroboration();
       renderTasks(data.tasks);
       const a = data.assumptions;
       document.getElementById('assumptions').textContent = `Everything under "Measured" is observed from this pipeline. Everything under "Modeled" is arithmetic on inputs nobody measured here: a baseline of ${a.baseline_human_hours[0]}–${a.baseline_human_hours[2]} engineer hours per remediation (base ${a.baseline_human_hours[1]}), $${a.engineer_hourly_cost_usd}/hour loaded cost, and $${a.acu_unit_cost_usd}/ACU${a.acu_unit_cost_verified ? ' (measured against this account)' : ' — UNVERIFIED PLACEHOLDER, Devin publishes no per-ACU price'}. Every dollar figure on this page derives from that rate.`;

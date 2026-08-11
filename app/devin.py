@@ -81,6 +81,45 @@ class DevinClient:
         response = self._post(f"{self.settings.devin_org_url}/sessions", payload)
         return self._normalise(response)
 
+    def org_corroboration(self, since: float) -> dict[str, Any]:
+        """Devin's own count of what this automation did.
+
+        The dashboard's numbers come from a database this project controls. These
+        come from Devin's analytics, which it does not. `origin.api` isolates
+        sessions this service created from anything a human started in the web
+        app, so the two views can be compared without conflating them.
+
+        ACU consumption is deliberately absent: it reports 0.0 on accounts billed
+        in credits, and a zero that means "not measured" is worse than no number.
+        """
+        if self.settings.demo_mode:
+            return {"available": False, "reason": "demo mode"}
+        params = {"time_after": int(since), "time_before": int(time.time()) + 86400}
+        try:
+            sessions = self._http.get(
+                f"{self.settings.devin_org_url}/metrics/sessions",
+                params=params,
+                timeout=20,
+            )
+            prs = self._http.get(
+                f"{self.settings.devin_org_url}/metrics/prs", params=params, timeout=20
+            )
+            sessions.raise_for_status()
+            prs.raise_for_status()
+        except Exception as exc:  # noqa: BLE001
+            return {"available": False, "reason": str(exc)[:200]}
+        by_origin = sessions.json().get("sessions_created_by_origin", {})
+        pr_data = prs.json()
+        return {
+            "available": True,
+            "api_sessions": by_origin.get("api", 0),
+            "human_sessions": sum(
+                count for origin, count in by_origin.items() if origin != "api"
+            ),
+            "prs_created": pr_data.get("prs_created_count", 0),
+            "prs_merged": pr_data.get("prs_merged_count", 0),
+        }
+
     def terminate_session(self, session_id: str) -> dict[str, Any]:
         """Stop a session this control plane has given up on.
 
