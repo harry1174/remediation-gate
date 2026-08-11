@@ -5,9 +5,11 @@
 An event-driven control plane that turns an approved Apache Superset issue into
 a verified pull request using Devin as the engineer doing the work.
 
-**Two issues, two Devin sessions, two CI-verified pull requests, both merged, in
-a median of 13.6 minutes for $3.00 total.** No pull request was edited by hand,
-and none was counted as verified on the agent's own say-so.
+**Four policy-approved issues produced three CI-verified pull requests in a
+median of 11.6 minutes, two merged, one correctly refused, and one pull request
+that recovered from a red build without anyone asking. $5.72 total.** No pull
+request was edited by hand, and none was counted as verified on the agent's own
+say-so.
 
 The workflow is deliberately narrow: a GitHub label is the approval boundary,
 one Devin Playbook is the remediation policy, one Knowledge note carries
@@ -38,9 +40,10 @@ check-run on the fork is green. If CI contradicts the agent, the task becomes
 `failed_verification`, the issue is handed back with `devin:needs-human`, and it
 is counted in its own failure bucket.
 
-The gap between the two is reported on the dashboard as **agent overclaims**.
-That number is the honest defect rate of the Playbook, and it is the only way to
-tell whether editing the Playbook actually improved anything. Sessions are
+The gap between the two is reported as **terminal CI contradictions** — final
+agent claims still disputed by CI after the recovery window. That number is the
+honest defect rate of the Playbook, and it is the only way to tell whether
+editing the Playbook actually improved anything. Sessions are
 disposable; the Playbook is the asset that accumulates value, and this is how you
 measure it.
 
@@ -57,27 +60,22 @@ implying the agent cleared Apache's entire build.
 Two issues in a fork of Apache Superset, each triggered by a human adding
 `devin:autofix`. Neither pull request was edited by hand.
 
-| | Issue #2 — `is_host_up` | Issue #1 — YAML loader |
-|---|---|---|
-| Issue | [#2](https://github.com/harry1174/superset/issues/2) reliability / medium | [#1](https://github.com/harry1174/superset/issues/1) hardening / low |
-| Devin session | [`9eb71c32`](https://app.devin.ai/sessions/9eb71c32f7df4daa9b825e939c16517f) | [`77978d24`](https://app.devin.ai/sessions/77978d245aaf4c2ea64be6d9be726dfe) |
-| Pull request | [#4](https://github.com/harry1174/superset/pull/4) | [#5](https://github.com/harry1174/superset/pull/5) |
-| CI | lint + targeted tests, green | lint + targeted tests, green |
-| Trigger → CI-verified | 15.6 min | 11.6 min |
-| Cost | $1.67 | $1.33 |
-| Outcome | **merged** | **merged** |
+| Issue | What it was | Session | Result | Time | Cost |
+|---|---|---|---|---|---|
+| [#2](https://github.com/harry1174/superset/issues/2) reliability | `is_host_up` raised instead of returning False when `ping` is absent | [`9eb71c32`](https://app.devin.ai/sessions/9eb71c32f7df4daa9b825e939c16517f) | [PR #4](https://github.com/harry1174/superset/pull/4) **merged** | 15.6 min | $1.67 |
+| [#1](https://github.com/harry1174/superset/issues/1) hardening | unsafe YAML loader behind a suppressed lint rule | [`77978d24`](https://app.devin.ai/sessions/77978d245aaf4c2ea64be6d9be726dfe) | [PR #5](https://github.com/harry1174/superset/pull/5) **merged** | 11.6 min | $1.33 |
+| [#7](https://github.com/harry1174/superset/issues/7) quality | could a `# noqa: S603` be removed? | [`508fe1d7`](https://app.devin.ai/sessions/508fe1d7633340219e3e663f16a8bb95) | **refused** — no PR opened | 3.6 min | $0.97 |
+| [#8](https://github.com/harry1174/superset/issues/8) reliability | regex accepted `"1 day laterago"` as valid | [`ed66e56e`](https://app.devin.ai/sessions/ed66e56ed53f4b738bd1f0bd96bd8e25) | [PR #11](https://github.com/harry1174/superset/pull/11) **verified**, after recovering from red CI | 11.6 min | $1.75 |
 
 ```
-triggered 2  →  session 2  →  agent says verified 2  →  CI confirms 2  →  merged 2
+triggered 4  →  session 4  →  agent says verified 3  →  CI confirms 3  →  merged 2
 ```
 
-Median trigger to CI-verified: **11.6 minutes**. Terminal CI contradictions —
-final agent claims still disputed by CI after the recovery window: **0 of 3**.
-Autonomous CI recoveries: **1**.
-Handed back to a human: **0**. A third issue was correctly **refused**. Total
-cost across all four runs: **$5.72**, or **$2.86 per merged pull request** —
-counting the refusal and the self-repair against merged output rather than
-excluding them.
+Median trigger to CI-verified: **11.6 minutes**. Remediation yield **3 of 4
+resolved**, with **1 safe handback** for an engineering decision and **0
+failures**. Terminal CI contradictions — final agent claims still disputed by CI
+after the recovery window: **0 of 3**. Autonomous CI recoveries: **1**. Total
+cost **$5.72**, or **$1.91 per CI-verified pull request**.
 
 The refusal was the cheapest run at $0.97, which inverts the usual economics of
 automation: normally the failure mode is the expensive one, because it wastes

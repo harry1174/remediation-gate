@@ -116,7 +116,7 @@
     <h2>Modeled &mdash; planning scenarios, not observed savings</h2>
     <div class="panel">
       <table>
-        <thead><tr><th>Scenario</th><th>Baseline hours per remediation</th><th>Capacity returned</th><th>Net value</th></tr></thead>
+        <thead><tr><th>Scenario</th><th>Baseline hours per remediation</th><th>Effort displaced</th><th>Net value</th></tr></thead>
         <tbody id="modeled"></tbody>
       </table>
     </div>
@@ -189,7 +189,7 @@
       const tr = document.createElement('tr');
       tr.append(text('td', name));
       tr.append(text('td', `${row.baseline_hours_per_remediation} h`));
-      tr.append(text('td', merged ? `${row.modeled_capacity_returned_hours} h` : '—'));
+      tr.append(text('td', merged ? `${row.effort_displaced_hours} h` : '—'));
       tr.append(text('td', merged ? `$${row.modeled_net_value_usd.toLocaleString()}` : '—'));
       root.append(tr);
     });
