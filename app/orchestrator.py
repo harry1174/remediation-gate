@@ -277,7 +277,14 @@ class Orchestrator:
         self.store.update(task["id"], checks_conclusion=conclusion)
 
         if conclusion == "success":
-            self.store.update(task["id"], state="verified_pr", checks_passed=1)
+            # Stamped separately from pr_opened_at: the honest cycle time is
+            # trigger to CI-confirmed, not trigger to the agent's assertion.
+            self.store.update(
+                task["id"],
+                state="verified_pr",
+                checks_passed=1,
+                checks_confirmed_at=time.time(),
+            )
             self.github.add_labels(task["issue_number"], ["devin:verified-pr"])
             self.github.comment(
                 task["issue_number"],

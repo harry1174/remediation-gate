@@ -69,8 +69,18 @@ class Settings:
     acu_unit_cost_usd: float = field(
         default_factory=lambda: _float("ACU_UNIT_COST_USD", 2.25)
     )
+    # What the same remediation would cost a human end to end: reproduce,
+    # navigate the repo, implement, test, raise the PR. Nobody knows this
+    # number precisely, so it is carried as a range and every figure derived
+    # from it is reported as a planning scenario rather than a saving.
+    baseline_human_hours_low: float = field(
+        default_factory=lambda: _float("BASELINE_HUMAN_HOURS_LOW", 1.0)
+    )
     engineer_hours_per_merged_pr: float = field(
         default_factory=lambda: _float("ENGINEER_HOURS_PER_MERGED_PR", 2.5)
+    )
+    baseline_human_hours_high: float = field(
+        default_factory=lambda: _float("BASELINE_HUMAN_HOURS_HIGH", 4.0)
     )
     engineer_hourly_cost_usd: float = field(
         default_factory=lambda: _float("ENGINEER_HOURLY_COST_USD", 110)

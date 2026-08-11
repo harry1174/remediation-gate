@@ -146,10 +146,40 @@ def test_merged_only_economics(tmp_path):
     assert before_merge["cost_per_merged_pr_usd"] is None
 
     store.update(task_id, state="merged", pr_state="merged", merged_at=time.time())
-    after_merge = snapshot(store, settings)["headline"]
-    assert after_merge["merged_prs"] == 1
-    assert after_merge["cost_per_merged_pr_usd"] == 9.0
-    assert after_merge["assumed_hours_returned"] == 2.5
+    after = snapshot(store, settings)
+    assert after["headline"]["merged_prs"] == 1
+    # Every attempted session's spend over merged output, not just the winners.
+    assert after["headline"]["cost_per_merged_pr_usd"] == 9.0
+
+    # Value figures live under `modeled`, never in the measured headline.
+    assert "modeled_capacity_returned_hours" not in after["headline"]
+    band = after["modeled"]
+    assert band["conservative"]["modeled_capacity_returned_hours"] == 1.0
+    assert band["base"]["modeled_capacity_returned_hours"] == 2.5
+    assert band["upside"]["modeled_capacity_returned_hours"] == 4.0
+    # Conservative must never flatter the base case.
+    assert (
+        band["conservative"]["modeled_net_value_usd"]
+        < band["upside"]["modeled_net_value_usd"]
+    )
+
+
+def test_cycle_time_is_measured_to_ci_confirmation_not_to_the_agent_claim(tmp_path):
+    """The agent's PR timestamp is a claim; the CI timestamp is the evidence."""
+    settings, store, orchestrator, task_id = _claimed_task(tmp_path)
+    headline = snapshot(store, settings)["headline"]
+    assert headline["median_minutes_to_agent_pr"] is not None
+    assert headline["median_minutes_to_verified"] is None  # CI has not spoken yet
+
+    orchestrator.github.pr_checks = lambda url: {
+        "conclusion": "success",
+        "failing": [],
+        "head_sha": "abc123",
+    }
+    orchestrator.reconcile()
+    headline = snapshot(store, settings)["headline"]
+    assert headline["median_minutes_to_verified"] is not None
+    assert store.get(task_id)["checks_confirmed_at"] is not None
 
 
 def _remediated(pr_number: int) -> DevinVerdict:

@@ -28,6 +28,7 @@ TASK_COLUMNS = {
     "verification_passed",
     "checks_passed",
     "checks_conclusion",
+    "checks_confirmed_at",
     "acus",
     "attempts",
     "verdict",
@@ -61,6 +62,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     verification_passed   INTEGER NOT NULL DEFAULT 0,  -- Devin's own claim
     checks_passed         INTEGER NOT NULL DEFAULT 0,  -- confirmed by repository CI
     checks_conclusion     TEXT,
+    checks_confirmed_at   REAL,
     acus                  REAL NOT NULL DEFAULT 0,
     attempts              INTEGER NOT NULL DEFAULT 0,
     verdict               TEXT,
@@ -106,6 +108,7 @@ class Store:
         for column, ddl in (
             ("checks_passed", "INTEGER NOT NULL DEFAULT 0"),
             ("checks_conclusion", "TEXT"),
+            ("checks_confirmed_at", "REAL"),
         ):
             if column not in existing:
                 conn.execute(f"ALTER TABLE tasks ADD COLUMN {column} {ddl}")

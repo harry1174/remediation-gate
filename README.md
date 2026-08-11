@@ -193,6 +193,54 @@ The dashboard reports cost per merged PR only after a merge, withholds rates
 until at least five tasks have resolved, and labels every value estimate as an
 assumption.
 
+## Business impact
+
+The problem is capacity allocation, not capability. Low- and medium-severity
+remediation work accumulates because each item needs reproduction, repository
+navigation, implementation, testing and PR preparation — and almost never
+justifies interrupting roadmap work. Remediation Gate converts policy-approved
+issues into independently verified pull requests while engineers keep control of
+both ends: which issues are eligible, and what gets merged.
+
+The dashboard is split into two panels that are never mixed.
+
+**Measured** — observed from this pipeline, no modelling:
+
+| | |
+|---|---|
+| Trigger to CI-verified | wall-clock from label to green check-run, reported beside the agent's own claim time so the gap is visible |
+| Cost per merged PR | every attempted session's spend, including failures, over merged output |
+| Agent overclaims | how often the agent said verified and CI disagreed |
+| Blocked / failed / needs-human | with a failure taxonomy |
+
+Agent overclaim rate is the one to watch. It is the only *measured* quality
+number here, it answers the question a VP actually asks first — how do I know
+these pull requests are not garbage — and it is the Playbook's defect rate, so it
+is the number you drive down by editing a document.
+
+**Modeled** — arithmetic on inputs nobody measured, shown as a conservative /
+base / upside band rather than a point estimate, because the uncertainty lives
+entirely in the human baseline and pretending otherwise invites an argument
+about a number that was never observed.
+
+Deliberately not claimed: reduced vulnerabilities, incidents, or regressions.
+This pilot measures none of them. Throughput is the proposed mechanism, not an
+observed result — two issues support no throughput statement.
+
+Language that survives scrutiny:
+
+> In this pilot, Remediation Gate converted **X** policy-approved issues into
+> **Y** CI-verified pull requests, of which **Z** were merged. Median trigger to
+> CI-verified time was **N** minutes and total usage was **A** ACUs. Those are
+> observed. The capacity and dollar figures are configurable planning scenarios,
+> not savings we have banked.
+
+Two honesty notes for anyone reproducing this. The ACU unit cost is a
+placeholder — it is not a public figure, so confirm it against your own account
+before quoting any dollar amount. And human-touch minutes, where recorded, are a
+single self-timed observation by the author of the system, which is why they sit
+in the evidence table rather than on the dashboard.
+
 ## Project layout
 
 ```text
