@@ -250,6 +250,22 @@ class Store:
             ).fetchone()
         return int(row[0])
 
+    def sessions_dispatched_since(self, since: float) -> int:
+        """Sessions started in a window.
+
+        The ACU budget cannot be enforced on a plan that reports no consumption
+        — `acus_dispatched_since` returns zero forever and the throttle never
+        fires. Counting sessions is crude but it always works, and a spend cap
+        that silently does nothing is worse than a blunt one that does.
+        """
+        with self._conn() as conn:
+            row = conn.execute(
+                """SELECT COUNT(*) FROM tasks
+                   WHERE dispatched_at IS NOT NULL AND dispatched_at >= ?""",
+                (since,),
+            ).fetchone()
+        return int(row[0])
+
     def acus_dispatched_since(self, since: float) -> float:
         with self._conn() as conn:
             row = conn.execute(

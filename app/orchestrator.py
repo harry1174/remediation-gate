@@ -74,6 +74,12 @@ class Orchestrator:
         for task in self.store.by_state("queued"):
             if self.store.active_count() >= self.settings.max_concurrent_sessions:
                 break
+            started_today = self.store.sessions_dispatched_since(time.time() - 86400)
+            if started_today >= self.settings.max_sessions_per_day:
+                self.store.log(
+                    task["id"], "budget_throttled", {"sessions_today": started_today}
+                )
+                break
             spent = self.store.acus_dispatched_since(time.time() - 86400)
             if self.settings.daily_acu_budget - spent < self.settings.max_acu_per_task:
                 self.store.log(task["id"], "budget_throttled", {"spent": spent})

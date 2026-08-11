@@ -45,6 +45,12 @@ class Settings:
         default_factory=lambda: _int("MAX_CONCURRENT_SESSIONS", 2)
     )
     daily_acu_budget: int = field(default_factory=lambda: _int("DAILY_ACU_BUDGET", 40))
+    # Enforced regardless of whether the platform reports ACU consumption. On a
+    # credit-billed account `acus_consumed` is always zero, so the ACU budget
+    # never throttles anything — this is the cap that actually fires.
+    max_sessions_per_day: int = field(
+        default_factory=lambda: _int("MAX_SESSIONS_PER_DAY", 8)
+    )
     poll_interval_seconds: int = field(
         default_factory=lambda: _int("POLL_INTERVAL_SECONDS", 10)
     )

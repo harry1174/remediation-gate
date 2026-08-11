@@ -63,6 +63,7 @@ def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
     failure_taxonomy = Counter(_failure_bucket(task) for task in unsuccessful)
     budget = settings.daily_acu_budget
     spent_today = store.acus_dispatched_since(now - 86400)
+    sessions_today = store.sessions_dispatched_since(now - 86400)
     # Spend counts every attempt, including the ones that failed. Dividing only
     # the successful sessions by the merged count would flatter the number.
     #
@@ -133,8 +134,15 @@ def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
             else None,
             "cost_basis": cost_basis,
             "merged_acus": round(merged_acus, 2),
-            "budget_used_pct": round(min(spent_today / budget, 1) * 100, 1)
-            if budget > 0
+            # The ACU budget is unenforceable when the platform reports no
+            # consumption, so the session cap is what is actually reported.
+            "sessions_today": sessions_today,
+            "session_cap": settings.max_sessions_per_day,
+            "acu_budget_enforceable": acus_reported,
+            "budget_used_pct": round(
+                min(sessions_today / settings.max_sessions_per_day, 1) * 100, 1
+            )
+            if settings.max_sessions_per_day > 0
             else 0,
             "total_execution_cost_usd": round(devin_cost, 2)
             if devin_cost is not None

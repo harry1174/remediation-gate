@@ -167,7 +167,7 @@
     } else {
       addStat(root, 'Success rate', `${headline.success_rate}%`, `${headline.verified_prs} verified, ${headline.needs_human} handed back`);
     }
-    addStat(root, 'Daily budget', `${headline.budget_used_pct}%`, `${headline.total_acus} ACUs observed`);
+    addStat(root, 'Daily budget', `${headline.sessions_today} / ${headline.session_cap}`, headline.acu_budget_enforceable ? `sessions today · ${headline.total_acus} ACUs observed` : 'sessions today — the ACU budget is unenforceable, this account reports none');
     if (headline.ci_confirmation === 'required') {
       addStat(root, 'Agent overclaims', `${headline.agent_overclaims} / ${headline.ci_adjudicated}`, 'agent said verified, CI disagreed — this is the playbook defect rate');
     } else {
