@@ -129,6 +129,7 @@ def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
         "events": store.recent_events(60),
         "assumptions": {
             "acu_unit_cost_usd": settings.acu_unit_cost_usd,
+            "acu_unit_cost_verified": settings.acu_unit_cost_verified,
             "engineer_hourly_cost_usd": settings.engineer_hourly_cost_usd,
             "baseline_human_hours": [
                 settings.baseline_human_hours_low,

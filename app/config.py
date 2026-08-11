@@ -74,6 +74,12 @@ class Settings:
     acu_unit_cost_usd: float = field(
         default_factory=lambda: _float("ACU_UNIT_COST_USD", 2.25)
     )
+    # Devin publishes no per-ACU price, so the default above is a placeholder.
+    # Until someone measures it against a real account balance, every dollar
+    # figure derived from it says so on the dashboard.
+    acu_unit_cost_verified: bool = field(
+        default_factory=lambda: _bool("ACU_UNIT_COST_VERIFIED", False)
+    )
     # What the same remediation would cost a human end to end: reproduce,
     # navigate the repo, implement, test, raise the PR. Nobody knows this
     # number precisely, so it is carried as a range and every figure derived
