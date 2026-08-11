@@ -99,6 +99,21 @@ To be explicit about what this is and is not evidence of: it demonstrates that
 this service's rejection path works against real GitHub data. It says nothing
 about whether Devin overclaims — across two real remediations, it did not.
 
+**And it can refuse.** [Issue #7](https://github.com/harry1174/superset/issues/7)
+asks whether a `# noqa: S603` can be removed from `is_host_up`. It cannot — the
+rule fires on the `subprocess` call itself, and every escape route is a stated
+non-goal. Devin returned **`blocked`** in 3.6 minutes without opening a pull
+request, having read `requirements/development.txt` to find the pinned ruff
+version rather than assuming it, and named the exact constraint that blocked it.
+
+That refusal also caught a defect here: this project's verification lane
+installed ruff 0.16.2 while the repository pins 0.9.7, so it had been
+adjudicating pull requests against a different linter than the repository uses.
+Now pinned to match.
+
+A codemod cannot decline. That is the clearest evidence in this pilot that the
+work between an issue and an outcome needs judgement, not transformation.
+
 **On cost.** Devin reports `acus_consumed: 0.0` on this account — from the
 session object, `/consumption/daily`, and `/consumption/daily/sessions/{id}`
 alike, because it bills in credits. The dashboard therefore withholds
