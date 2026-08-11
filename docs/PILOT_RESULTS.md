@@ -21,8 +21,9 @@ so in as many words. Once measured, set the value and
 |---|---|
 | Balance before run 1 | $28.35 |
 | Balance after run 1 | $26.68 |
+| Balance after run 2 | $25.35 |
 | ACUs consumed (from API) | 0.0 — **not reported on this account** |
-| **Derived $/ACU** | n/a. Measured cost is the balance delta: **$1.67** |
+| **Derived $/ACU** | n/a — not reported. Measured cost: **$1.67** run 1, **$1.33** run 2, **$3.00 total for two verified PRs** |
 
 ## Per-issue evidence
 
@@ -74,14 +75,22 @@ failing pull request, adjudicated by the same code path as a real one.
 
 | | |
 |---|---|
-| PR URL | |
-| Failing check | |
-| Task state after adjudication | |
-| Counted as an agent overclaim | |
+| PR URL | [#6](https://github.com/harry1174/superset/pull/6) — closed unmerged |
+| What it does | adds `# noqa: F401` to silence an unused import |
+| `ruff check` | **passes** — the suppression works |
+| Failing check | `lint changed files`, on the added-suppression step |
+| Task state after adjudication | `failed_verification` |
+| Reason recorded | "CI checks failed after the agent reported success: lint changed files" |
+| Counted as an agent overclaim | **yes** — 1/1, bucket `CI contradicted the agent` |
 
-Not yet run. Both real pull requests passed CI first time, so the gate has not
-been observed rejecting anything — only accepting. A deliberately failing pull
-request is the only way to demonstrate it discriminates.
+Run against a scratch database so the pilot figures above are untouched, and
+hand-written rather than agent-produced — the purpose is to exercise the gate,
+not to fake a session.
+
+Both real pull requests passed CI first time, so without this the gate had only
+ever been observed accepting. The failure mode chosen is the meaningful one: the
+linter was silenced rather than satisfied, `ruff check` went green, and the gate
+caught the silencing.
 
 ## What this pilot does not show
 

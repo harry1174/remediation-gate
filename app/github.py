@@ -155,7 +155,16 @@ class GitHubClient:
             self._url(f"/commits/{head_sha}/check-runs"), params={"per_page": 100}
         )
         runs.raise_for_status()
-        check_runs = runs.json().get("check_runs", [])
+        allowed = {
+            slug.strip()
+            for slug in self.settings.gating_check_apps.split(",")
+            if slug.strip()
+        }
+        check_runs = [
+            run
+            for run in runs.json().get("check_runs", [])
+            if not allowed or (run.get("app") or {}).get("slug") in allowed
+        ]
         if not check_runs:
             return {"conclusion": "none", "failing": [], "head_sha": head_sha}
 

@@ -67,6 +67,15 @@ class Settings:
     require_ci_checks: bool = field(
         default_factory=lambda: _bool("REQUIRE_CI_CHECKS", True)
     )
+    # Which apps' check-runs are allowed to satisfy the gate. Restricted to the
+    # repository's own CI on purpose: Devin Review also comments on these pull
+    # requests, and one Devin agent approving another Devin agent's work is not
+    # the independent confirmation this gate exists to obtain. It happens to
+    # post a commit status rather than a check-run today, so it is excluded
+    # either way — this makes that deliberate instead of lucky.
+    gating_check_apps: str = field(
+        default_factory=lambda: os.getenv("GATING_CHECK_APPS", "github-actions")
+    )
     checks_grace_minutes: int = field(
         default_factory=lambda: _int("CHECKS_GRACE_MINUTES", 15)
     )

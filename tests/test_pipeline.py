@@ -11,6 +11,7 @@ from app.config import Settings
 from app.main import create_app
 from app.metrics import snapshot
 from app.models import DevinVerdict
+from app.github import GitHubClient
 from app.orchestrator import Orchestrator
 from app.policy import load_playbook
 from app.store import Store, TERMINAL_STATES
@@ -428,6 +429,48 @@ def test_verdict_is_acted_on_even_if_the_session_has_not_exited(tmp_path):
     }
     orchestrator.reconcile()
     assert store.get(task_id)["state"] == "agent_verified_pr"
+
+
+def test_only_repository_ci_can_satisfy_the_gate(tmp_path):
+    """Devin Review runs on these pull requests too. One Devin agent approving
+    another Devin agent's work is not independent confirmation."""
+    import httpx
+
+    settings = _settings(tmp_path, demo_mode=False, devin_api_key="k",
+                         devin_org_id="o", github_token="t")
+    client = GitHubClient(settings)
+
+    payload = {
+        "check_runs": [
+            {"name": "devin-review", "app": {"slug": "devin"},
+             "status": "completed", "conclusion": "failure"},
+            {"name": "lint", "app": {"slug": "github-actions"},
+             "status": "completed", "conclusion": "success"},
+        ]
+    }
+
+    class _Resp:
+        status_code = 200
+
+        def __init__(self, data):
+            self._data = data
+
+        def json(self):
+            return self._data
+
+        def raise_for_status(self):
+            return None
+
+    def fake_get(url, **kwargs):
+        if "/pulls/" in url:
+            return _Resp({"head": {"sha": "abc123"}})
+        return _Resp(payload)
+
+    client._http.get = fake_get  # type: ignore[method-assign]
+    result = client.pr_checks("https://github.com/harry1174/superset/pull/9")
+    # The failing Devin check is ignored; the gate reflects repository CI only.
+    assert result["conclusion"] == "success"
+    assert result["failing"] == []
 
 
 def test_session_records_the_mode_it_ran_in(tmp_path):
