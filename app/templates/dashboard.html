@@ -160,7 +160,7 @@
   function renderStats(headline) {
     const root = document.getElementById('stats');
     root.replaceChildren();
-    addStat(root, 'Cost per merged PR', headline.cost_per_merged_pr_usd == null ? '—' : `$${headline.cost_per_merged_pr_usd}`, headline.cost_basis === 'acus_reported' ? `$${headline.total_execution_cost_usd} across every attempt / ${headline.merged_prs} merged` : 'Devin reported no ACU consumption for this account — cost withheld rather than shown as $0');
+    addStat(root, 'Cost per merged PR', headline.cost_per_merged_pr_usd == null ? '—' : `$${headline.cost_per_merged_pr_usd}`, headline.cost_basis === 'unavailable: Devin reported no ACU consumption for this account' ? 'Devin reported no ACU consumption for this account — cost withheld rather than shown as $0' : `$${headline.total_execution_cost_usd} across every attempt / ${headline.merged_prs} merged · ${headline.cost_basis}`);
     addStat(root, 'Trigger to CI-verified', headline.median_minutes_to_verified == null ? '—' : `${headline.median_minutes_to_verified}m`, headline.median_minutes_to_agent_pr == null ? 'median' : `agent claimed at ${headline.median_minutes_to_agent_pr}m`);
     if (headline.success_rate == null) {
       addStat(root, 'Outcomes', `${headline.verified_prs} / ${headline.resolved}`, `verified of resolved, ${headline.needs_human} handed back — too few to quote a rate`);

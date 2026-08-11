@@ -22,7 +22,7 @@ so in as many words. Once measured, set the value and
 | Balance before run 1 | $28.35 |
 | Balance after run 1 | $26.68 |
 | Balance after run 2 | $25.35 |
-| Balance after run 3 | see below |
+| Balance after run 3 | $24.38 |
 | ACUs consumed (from API) | 0.0 — **not reported on this account** |
 | **Derived $/ACU** | n/a — not reported. Measured cost: **$1.67** run 1, **$1.33** run 2, **$3.00 total for two verified PRs** |
 
@@ -70,6 +70,7 @@ is a successful outcome here"* — so this tests judgement, not obedience.
 | Issue | [#7](https://github.com/harry1174/superset/issues/7) quality / low |
 | Session | [`508fe1d7`](https://app.devin.ai/sessions/508fe1d7633340219e3e663f16a8bb95) |
 | Elapsed | 3.6 min |
+| Cost | $0.97 |
 | Pull request | **none opened** |
 | Outcome | **`blocked`** |
 | Bucket | `needs engineering decision` |
@@ -167,3 +168,27 @@ the automation on the issue. Failed writes still never fail a remediation, but
 they now surface in `/healthz`, and preflight probes `Issues: write` by posting a
 comment and deleting it — the only honest check, since fine-grained tokens expose
 no permission introspection.
+
+## Cost by outcome
+
+| Outcome | Time | Cost |
+|---|---|---|
+| Remediation, merged (#2) | 15.6 min | $1.67 |
+| Remediation, merged (#1) | 11.6 min | $1.33 |
+| Correct refusal (#7) | 3.6 min | $0.97 |
+| | **Total** | **$3.97** |
+
+**$1.99 per merged pull request**, counting the refusal's cost against the
+merged output rather than excluding it.
+
+The refusal is the cheapest outcome, which inverts the usual economics of
+automation. Normally the failure mode is the expensive one: wasted compute plus a
+speculative pull request somebody has to read and reject. Here a correct decline
+cost 58% of a success and consumed no review time at all. Variance across three
+quite different tasks was low — $0.97 to $1.67 — which makes a scoped remediation
+on a repository this size roughly a $1.50 unit for planning purposes.
+
+Sessions parked in `waiting_for_user` after producing a verdict in all three
+runs, including after the Playbook was amended to tell them not to. The
+orchestrator now terminates a session once its task reaches a terminal state,
+which closed all three.

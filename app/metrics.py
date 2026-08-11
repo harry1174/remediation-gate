@@ -72,7 +72,18 @@ def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
     # nothing, so cost is withheld and the reason is stated.
     dispatched = [task for task in tasks if task["session_id"]]
     acus_reported = total_acus > 0 or not dispatched
-    devin_cost = total_acus * settings.acu_unit_cost_usd if acus_reported else None
+    if acus_reported:
+        devin_cost = total_acus * settings.acu_unit_cost_usd
+        cost_basis = "acus_reported"
+    elif settings.pilot_measured_cost_usd > 0:
+        # No ACUs to derive from, but the spend was observed directly from the
+        # account balance. Labelled as such: it is entered by a human, not
+        # measured by this service.
+        devin_cost = settings.pilot_measured_cost_usd
+        cost_basis = "measured from account balance"
+    else:
+        devin_cost = None
+        cost_basis = "unavailable: Devin reported no ACU consumption for this account"
 
     return {
         "generated_at": now,
@@ -120,9 +131,7 @@ def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
             "cost_per_merged_pr_usd": round(devin_cost / len(merged), 2)
             if merged and devin_cost is not None
             else None,
-            "cost_basis": "acus_reported"
-            if acus_reported
-            else "unavailable: Devin reported no ACU consumption for this account",
+            "cost_basis": cost_basis,
             "merged_acus": round(merged_acus, 2),
             "budget_used_pct": round(min(spent_today / budget, 1) * 100, 1)
             if budget > 0

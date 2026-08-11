@@ -89,6 +89,13 @@ class Settings:
     acu_unit_cost_verified: bool = field(
         default_factory=lambda: _bool("ACU_UNIT_COST_VERIFIED", False)
     )
+    # Total spend observed from the account balance, for plans where Devin
+    # reports no ACU consumption. Entered by a human from a real statement and
+    # labelled as such — it is the only cost figure available on this account,
+    # and withholding cost entirely undersells the result.
+    pilot_measured_cost_usd: float = field(
+        default_factory=lambda: _float("PILOT_MEASURED_COST_USD", 0.0)
+    )
     # What the same remediation would cost a human end to end: reproduce,
     # navigate the repo, implement, test, raise the PR. Nobody knows this
     # number precisely, so it is carried as a range and every figure derived

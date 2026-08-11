@@ -14,7 +14,7 @@ from .github import GitHubClient
 from .models import DevinVerdict
 from .policy import load_knowledge, load_playbook
 from .prompts import build_prompt
-from .store import Store
+from .store import Store, TERMINAL_STATES
 
 
 log = logging.getLogger("orchestrator")
@@ -152,6 +152,37 @@ class Orchestrator:
                 self._reconcile_pr(task)
             except Exception as exc:  # noqa: BLE001
                 log.warning("PR reconciliation failed for %s: %s", task["id"], exc)
+        self._close_finished_sessions()
+
+    def _close_finished_sessions(self) -> None:
+        """Terminate sessions whose task has finished.
+
+        Observed across three live runs: Devin produces its verdict and then
+        parks in `waiting_for_user` rather than exiting, so every completed task
+        left a session open indefinitely. Once a task is terminal there is
+        nothing left to ask, and leaving an agent parked is leaving a process
+        idling on someone's account.
+
+        Deliberately not done at `agent_verified_pr`: CI has not adjudicated yet
+        there, and terminating is irreversible — it would foreclose ever sending
+        a failure back to the session that produced it.
+        """
+        for state in TERMINAL_STATES:
+            for task in self.store.by_state(state):
+                if not task["session_id"]:
+                    continue
+                if self.store.has_event(task["id"], "session_terminated"):
+                    continue
+                try:
+                    final = self.devin.terminate_session(task["session_id"])
+                    self.store.log(
+                        task["id"],
+                        "session_terminated",
+                        {"acus": final.get("acus_consumed"), "after": state},
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("could not close session for %s: %s", task["id"], exc)
+                    self.store.log(task["id"], "session_terminated", f"failed: {exc}")
 
     def _reconcile_session(self, task: dict[str, Any]) -> None:
         session = self.devin.get_session(task["session_id"])
