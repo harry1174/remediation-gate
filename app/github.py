@@ -25,6 +25,11 @@ def verify_signature(secret: str, body: bytes, signature: str | None) -> bool:
 class GitHubClient:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
+        # Writes that failed on permissions. A status comment failing must not
+        # kill a remediation, but it must not vanish into a log line either:
+        # the first live run lost every issue comment to a 403 and the only
+        # trace was a warning nobody was watching.
+        self.degraded: list[str] = []
         self._http = httpx.Client(
             timeout=30,
             headers={
@@ -48,7 +53,7 @@ class GitHubClient:
             )
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            log.warning("could not comment on issue %s: %s", issue_number, exc)
+            self._degrade("comment", issue_number, exc)
 
     def add_labels(self, issue_number: int, labels: list[str]) -> None:
         if self.settings.demo_mode:
@@ -59,7 +64,14 @@ class GitHubClient:
             )
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            log.warning("could not label issue %s: %s", issue_number, exc)
+            self._degrade("label", issue_number, exc)
+
+    def _degrade(self, action: str, issue_number: int, exc: Exception) -> None:
+        """Record a failed write loudly without failing the remediation."""
+        note = f"{action} on issue {issue_number} failed: {exc}"[:300]
+        log.warning("DEGRADED: %s", note)
+        if note not in self.degraded:
+            self.degraded.append(note)
 
     def ensure_labels(self, labels: dict[str, str]) -> None:
         if self.settings.demo_mode:

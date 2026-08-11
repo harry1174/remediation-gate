@@ -65,7 +65,14 @@ def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
     spent_today = store.acus_dispatched_since(now - 86400)
     # Spend counts every attempt, including the ones that failed. Dividing only
     # the successful sessions by the merged count would flatter the number.
-    devin_cost = total_acus * settings.acu_unit_cost_usd
+    #
+    # Devin does not report ACU consumption on every plan — an account billed in
+    # credits returns 0.0 from both the session object and the consumption API.
+    # Reporting "$0.00 per merged PR" off that would be worse than reporting
+    # nothing, so cost is withheld and the reason is stated.
+    dispatched = [task for task in tasks if task["session_id"]]
+    acus_reported = total_acus > 0 or not dispatched
+    devin_cost = total_acus * settings.acu_unit_cost_usd if acus_reported else None
 
     return {
         "generated_at": now,
@@ -111,19 +118,24 @@ def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
             if verified
             else None,
             "cost_per_merged_pr_usd": round(devin_cost / len(merged), 2)
-            if merged
+            if merged and devin_cost is not None
             else None,
+            "cost_basis": "acus_reported"
+            if acus_reported
+            else "unavailable: Devin reported no ACU consumption for this account",
             "merged_acus": round(merged_acus, 2),
             "budget_used_pct": round(min(spent_today / budget, 1) * 100, 1)
             if budget > 0
             else 0,
-            "total_execution_cost_usd": round(devin_cost, 2),
+            "total_execution_cost_usd": round(devin_cost, 2)
+            if devin_cost is not None
+            else None,
         },
         # Deliberately separated from `headline`. Everything above is an
         # observation. Everything here is arithmetic on top of numbers nobody
         # measured, shown as a low/base/high band so it reads as a planning
         # scenario rather than a saving that has already been banked.
-        "modeled": _scenarios(len(merged), devin_cost, settings),
+        "modeled": _scenarios(len(merged), devin_cost or 0.0, settings),
         "failure_taxonomy": dict(failure_taxonomy),
         "tasks": [_task_view(task, now) for task in tasks],
         "events": store.recent_events(60),

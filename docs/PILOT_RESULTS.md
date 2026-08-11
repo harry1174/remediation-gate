@@ -20,9 +20,9 @@ so in as many words. Once measured, set the value and
 | | |
 |---|---|
 | Balance before run 1 | $28.35 |
-| Balance after run 1 | |
-| ACUs consumed (from API) | |
-| **Derived $/ACU** | |
+| Balance after run 1 | $26.68 |
+| ACUs consumed (from API) | 0.0 — **not reported on this account** |
+| **Derived $/ACU** | n/a. Measured cost is the balance delta: **$1.67** |
 
 ## Per-issue evidence
 

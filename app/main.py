@@ -125,11 +125,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/healthz")
     def health() -> dict[str, Any]:
+        degraded = orchestrator.github.degraded
         return {
             "ok": True,
             "mode": "demo" if active_settings.demo_mode else "live",
             "policy_ready": bool(orchestrator.playbook_id and orchestrator.knowledge_id),
             "active_tasks": store.active_count(),
+            # Writes the pipeline survived but a reviewer never saw. Reported
+            # here so a missing permission is visible without reading logs.
+            "degraded": degraded,
         }
 
     @app.get("/", response_class=HTMLResponse)

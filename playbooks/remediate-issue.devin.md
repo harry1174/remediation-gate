@@ -23,7 +23,9 @@ not a successful outcome.
 7. Review the diff for unrelated changes, generated files, and accidental formatting.
 8. Open a pull request against the repository in the issue contract. Include
    `Closes #<issue-number>`, the root cause, the change, and exact verification output.
-9. Return the required structured output.
+9. Return the required structured output, then end the session. Do not stop and
+   wait for further instruction after the verdict: the verdict *is* the handoff,
+   and a session parked awaiting a reply blocks the pipeline that is watching it.
 
 ## Specifications
 

@@ -126,6 +126,33 @@ def check_github() -> None:
         "ok" if checks.status_code == 200 else f"HTTP {checks.status_code}",
     )
 
+    # There is no permission-introspection endpoint for fine-grained tokens, so
+    # the only honest check is to write and roll back. The first live run lost
+    # every status comment to a 403 that a read-only probe could not have found.
+    probe = httpx.post(
+        f"{settings.github_api}/repos/{settings.github_repo}/issues/1/comments",
+        headers={
+            "Authorization": f"Bearer {settings.github_token}",
+            "Accept": "application/vnd.github+json",
+        },
+        json={"body": "_Remediation Gate preflight probe; deleted immediately._"},
+        timeout=30,
+    )
+    if probe.status_code == 201:
+        httpx.delete(
+            f"{settings.github_api}/repos/{settings.github_repo}/issues/comments/"
+            f"{probe.json()['id']}",
+            headers={"Authorization": f"Bearer {settings.github_token}"},
+            timeout=30,
+        )
+        record(PASS, "Token has Issues: write", "probe posted and removed")
+    else:
+        record(
+            FAIL,
+            "Token has Issues: write",
+            f"HTTP {probe.status_code} — status comments and labels will be lost",
+        )
+
     workflows = httpx.get(
         f"{settings.github_api}/repos/{settings.github_repo}/actions/workflows",
         headers={"Authorization": f"Bearer {settings.github_token}"},
