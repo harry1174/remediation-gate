@@ -73,12 +73,15 @@ triggered 2  →  session 2  →  agent says verified 2  →  CI confirms 2  →
 
 Median trigger to CI-verified: **13.6 minutes**. Agent overclaims: **0 of 2**.
 Handed back to a human: **0**. A third issue was correctly **refused**. Total
-cost across all three: **$3.97**, or **$1.99 per merged pull request** — counting
-the refusal against merged output rather than excluding it.
+cost across all four runs: **$5.72**, or **$2.86 per merged pull request** —
+counting the refusal and the self-repair against merged output rather than
+excluding them.
 
 The refusal was the cheapest run at $0.97, which inverts the usual economics of
 automation: normally the failure mode is the expensive one, because it wastes
-compute *and* produces something a human has to read and reject.
+compute *and* produces something a human has to read and reject. The
+self-repairing run was the dearest at $1.75, and bought a diff better than
+master.
 
 Rates are withheld below five resolved tasks, so these stay as counts — two
 results do not make a percentage.

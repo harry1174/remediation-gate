@@ -23,6 +23,7 @@ so in as many words. Once measured, set the value and
 | Balance after run 1 | $26.68 |
 | Balance after run 2 | $25.35 |
 | Balance after run 3 | $24.38 |
+| Balance after run 4 | $22.63 |
 | ACUs consumed (from API) | 0.0 — **not reported on this account** |
 | **Derived $/ACU** | n/a — not reported. Measured cost: **$1.67** run 1, **$1.33** run 2, **$3.00 total for two verified PRs** |
 
@@ -176,17 +177,30 @@ no permission introspection.
 | Remediation, merged (#2) | 15.6 min | $1.67 |
 | Remediation, merged (#1) | 11.6 min | $1.33 |
 | Correct refusal (#7) | 3.6 min | $0.97 |
-| | **Total** | **$3.97** |
+| Remediation + self-repair (#8) | 11.6 min | $1.75 |
+| | **Total** | **$5.72** |
 
-**$1.99 per merged pull request**, counting the refusal's cost against the
-merged output rather than excluding it.
+**$2.86 per merged pull request** on two merges, counting the refusal and the
+self-repair against merged output rather than excluding them. Merging the
+verified third pull request takes it to $1.91.
 
-The refusal is the cheapest outcome, which inverts the usual economics of
+Two things worth reading off that table.
+
+**The refusal is the cheapest outcome**, which inverts the usual economics of
 automation. Normally the failure mode is the expensive one: wasted compute plus a
 speculative pull request somebody has to read and reject. Here a correct decline
-cost 58% of a success and consumed no review time at all. Variance across three
-quite different tasks was low — $0.97 to $1.67 — which makes a scoped remediation
-on a repository this size roughly a $1.50 unit for planning purposes.
+cost 58% of a success and consumed no review time at all.
+
+**Self-repair is the most expensive, and worth it.** Issue #8 cost $1.75 against
+a $0.97–$1.67 range for everything else, because the agent pushed a second commit
+after CI rejected the first. That extra ~$0.30 bought a diff that is better than
+what was on master, since it removed a suppression that had been there before any
+of this started. Cheap relative to a reviewer noticing the same thing a day
+later, or not noticing.
+
+Variance across four quite different tasks was low — $0.97 to $1.75 — which makes
+a scoped remediation on a repository this size roughly a **$1.50 unit** for
+planning purposes.
 
 Sessions parked in `waiting_for_user` after producing a verdict in all three
 runs, including after the Playbook was amended to tell them not to. The
