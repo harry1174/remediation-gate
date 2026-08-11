@@ -82,13 +82,22 @@ reports 2 sessions created via API, 2 pull requests created and 2 merged over
 the same window, and zero sessions started by a human. Every other figure here
 comes from a SQLite database this project owns; that one does not.
 
-**The gate has been observed rejecting, not just accepting.** Both real pull
-requests passed first time, which would leave "0 overclaims" resting on trust.
-[PR #6](https://github.com/harry1174/superset/pull/6) was hand-written to add
-`# noqa: F401` and silence a linter — the shortcut every issue contract forbids.
-`ruff check` went green; the added-suppression step failed; the orchestrator
-drove the task to `failed_verification` and counted it as an overclaim. Run
-against a scratch database so the figures above are untouched.
+**The rejection path has been exercised, by fault injection.** Both real pull
+requests passed first time, so `failed_verification` had never executed outside
+a unit test. [PR #6](https://github.com/harry1174/superset/pull/6) was written
+**by hand** — no Devin session was involved — to add `# noqa: F401` and silence
+a linter, the shortcut every issue contract forbids. It was paired with a
+**synthetic verdict** claiming `all_passed: true`, standing in for an agent that
+overclaims.
+
+Everything downstream of that claim is real: `ruff check` went green, the
+added-suppression step failed, and the orchestrator fetched the head SHA, read
+the real check-runs, refused to promote the task, and recorded it as an
+overclaim. Run against a scratch database, so the figures above are untouched.
+
+To be explicit about what this is and is not evidence of: it demonstrates that
+this service's rejection path works against real GitHub data. It says nothing
+about whether Devin overclaims — across two real remediations, it did not.
 
 **On cost.** Devin reports `acus_consumed: 0.0` on this account — from the
 session object, `/consumption/daily`, and `/consumption/daily/sessions/{id}`

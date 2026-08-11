@@ -83,9 +83,15 @@ failing pull request, adjudicated by the same code path as a real one.
 | Reason recorded | "CI checks failed after the agent reported success: lint changed files" |
 | Counted as an agent overclaim | **yes** — 1/1, bucket `CI contradicted the agent` |
 
-Run against a scratch database so the pilot figures above are untouched, and
-hand-written rather than agent-produced — the purpose is to exercise the gate,
-not to fake a session.
+**No Devin session was involved.** The pull request was hand-written and the
+agent's "verified" claim was synthetic — a stand-in for the verdict an
+overclaiming agent would return. Everything downstream is real: the CI failure,
+the check-run poll, the state transition, the taxonomy bucket.
+
+This is evidence that the rejection path works against real GitHub data. It is
+not evidence about Devin's behaviour; across two real remediations there were
+zero overclaims. Run against a scratch database so the pilot figures are
+untouched.
 
 Both real pull requests passed CI first time, so without this the gate had only
 ever been observed accepting. The failure mode chosen is the meaningful one: the

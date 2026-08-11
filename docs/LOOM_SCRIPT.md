@@ -94,11 +94,17 @@ Now the gate. Show the funnel: *agent says verified 2 → CI confirms 2*.
 
 Then PR #6 — the moment that can't be staged:
 
-> Both real PRs passed first time, which would leave "zero overclaims" resting on
-> my word. So I wrote one by hand that silences a linter with a noqa — the
-> shortcut every contract forbids. Ruff goes green. The gate fails it anyway, on
-> the step that watches for the silencing, and the task lands in
-> `failed_verification` counted as an overclaim.
+> Both real PRs passed first time, so this rejection path had never actually
+> executed. So I injected a fault: a pull request I wrote by hand that silences a
+> linter with a noqa, plus a synthetic verdict claiming success. To be clear,
+> Devin was not involved in that one — I'm not going to fake a session. But
+> everything after the claim is real: ruff goes green, the gate fails it on the
+> step watching for the silencing, and the task lands in `failed_verification`
+> counted as an overclaim.
+
+Say "synthetic verdict" out loud. Claiming Devin tried to game the linter is
+false and checkable in thirty seconds, and the honest version still proves what
+it needs to: the rejection path works against real GitHub data.
 
 If asked about Devin Review: it runs on these PRs, and it's deliberately excluded
 from the gate. One Devin agent approving another Devin agent's work is not
