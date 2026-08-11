@@ -5,6 +5,10 @@
 An event-driven control plane that turns an approved Apache Superset issue into
 a verified pull request using Devin as the engineer doing the work.
 
+**Two issues, two Devin sessions, two CI-verified pull requests, both merged, in
+a median of 13.6 minutes for $3.00 total.** No pull request was edited by hand,
+and none was counted as verified on the agent's own say-so.
+
 The workflow is deliberately narrow: a GitHub label is the approval boundary,
 one Devin Playbook is the remediation policy, one Knowledge note carries
 repository conventions, and a pull request is only counted as verified once the
@@ -48,25 +52,53 @@ upstream workflows are disabled, so the check-run the orchestrator polls is
 unambiguous. This is the lane a team would give an agent — say so, rather than
 implying the agent cleared Apache's entire build.
 
-## What is real
+## What actually happened
 
-- Superset fork: https://github.com/harry1174/superset
-- Findings are pinned to fork commit `916c50284b8ca90d698172db01168c47ffec1e22`.
-- The issue contracts name exact files, reproductions, verification commands,
-  and non-goals.
-- Devin v3 requests attach a Playbook, Knowledge note, repository, ACU cap,
-  tags, and a JSON Schema.
-- GitHub HMAC verification, repository allowlisting, task idempotency, the
-  verification gate, and the CI gate are exercised by tests.
+Two issues in a fork of Apache Superset, each triggered by a human adding
+`devin:autofix`. Neither pull request was edited by hand.
 
-The deterministic demo adapter is only for evaluating the orchestration without
-credentials. It is visibly marked `Demo - no ACUs spent`; its session and PR
-links are not evidence of live remediation.
+| | Issue #2 — `is_host_up` | Issue #1 — YAML loader |
+|---|---|---|
+| Issue | [#2](https://github.com/harry1174/superset/issues/2) reliability / medium | [#1](https://github.com/harry1174/superset/issues/1) hardening / low |
+| Devin session | [`9eb71c32`](https://app.devin.ai/sessions/9eb71c32f7df4daa9b825e939c16517f) | [`77978d24`](https://app.devin.ai/sessions/77978d245aaf4c2ea64be6d9be726dfe) |
+| Pull request | [#4](https://github.com/harry1174/superset/pull/4) | [#5](https://github.com/harry1174/superset/pull/5) |
+| CI | lint + targeted tests, green | lint + targeted tests, green |
+| Trigger → CI-verified | 15.6 min | 11.6 min |
+| Cost | $1.67 | $1.33 |
+| Outcome | **merged** | **merged** |
 
-- Hardening issue: https://github.com/harry1174/superset/issues/1
-- Reliability issue: https://github.com/harry1174/superset/issues/2
-- Live Devin sessions: pending credentials
-- Verified PRs: pending credentials
+```
+triggered 2  →  session 2  →  agent says verified 2  →  CI confirms 2  →  merged 2
+```
+
+Median trigger to CI-verified: **13.6 minutes**. Agent overclaims: **0 of 2**.
+Handed back to a human: **0**. Total cost: **$3.00**.
+
+Rates are withheld below five resolved tasks, so these stay as counts — two
+results do not make a percentage.
+
+**Corroboration.** Devin's own analytics, which this project can only read,
+reports 2 sessions created via API, 2 pull requests created and 2 merged over
+the same window, and zero sessions started by a human. Every other figure here
+comes from a SQLite database this project owns; that one does not.
+
+**The gate has been observed rejecting, not just accepting.** Both real pull
+requests passed first time, which would leave "0 overclaims" resting on trust.
+[PR #6](https://github.com/harry1174/superset/pull/6) was hand-written to add
+`# noqa: F401` and silence a linter — the shortcut every issue contract forbids.
+`ruff check` went green; the added-suppression step failed; the orchestrator
+drove the task to `failed_verification` and counted it as an overclaim. Run
+against a scratch database so the figures above are untouched.
+
+**On cost.** Devin reports `acus_consumed: 0.0` on this account — from the
+session object, `/consumption/daily`, and `/consumption/daily/sessions/{id}`
+alike, because it bills in credits. The dashboard therefore withholds
+ACU-derived cost rather than publishing a zero. The $3.00 is a measured balance
+delta, which is a better figure anyway.
+
+The deterministic demo adapter exists only so the orchestration can be evaluated
+without credentials. It is marked `Demo — no ACUs spent`, and its session and PR
+links are not evidence of anything.
 
 ## Run the deterministic demo
 
@@ -284,6 +316,33 @@ spend, state, and evidence. Devin performs the work that a scanner or codemod
 cannot reliably do: inspect a large unfamiliar repository, reproduce a finding,
 choose the smallest safe change, add a regression test, iterate on failures,
 open a pull request, or refuse the task when the contract is unsafe.
+
+## What the live runs taught us
+
+Two things surfaced against a real agent that no amount of mock testing would
+have found, and both sharpened the design rather than patching around it.
+
+**Instructing an agent is not the same as controlling it.** Both sessions
+produced a valid structured verdict, opened a pull request — and then parked in
+`waiting_for_user` instead of exiting. `structured_output_required` does not make
+a session terminate. The obvious fix was policy: Playbook step 9 was amended to
+say *end the session after returning the verdict*. The next run parked anyway.
+
+Policy successfully governed everything Devin *produced* — the diff, the
+regression tests, removing rather than relocating a lint suppression, respecting
+every non-goal. It did not change when the session ended. What fixed it was the
+orchestrator acting on a verdict the moment one exists, regardless of what the
+session does next. That gap is the entire argument for a control plane.
+
+**Silent degradation is worse than failure.** A missing `Issues: write`
+permission produced a 403 on every status comment in the first run. The
+pipeline correctly survived it — the remediation completed and the pull request
+landed, because Devin pushes through its own integration rather than this
+service's token. But the only trace was a log line nobody was reading, and the
+issue went through an entire remediation with no visible sign of the automation.
+Failed writes still never fail a remediation; they now surface in `/healthz`, and
+`make preflight` probes the permission by writing a comment and deleting it,
+which is the only honest check available for a fine-grained token.
 
 ## Production extensions
 
