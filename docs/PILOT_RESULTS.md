@@ -19,7 +19,7 @@ so in as many words. Once measured, set the value and
 
 | | |
 |---|---|
-| Balance before run 1 | |
+| Balance before run 1 | $28.35 |
 | Balance after run 1 | |
 | ACUs consumed (from API) | |
 | **Derived $/ACU** | |

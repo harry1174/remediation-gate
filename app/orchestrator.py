@@ -168,23 +168,28 @@ class Orchestrator:
         if session["status"] == "running" and task["state"] != "running":
             self.store.update(task["id"], state="running")
 
-        # Devin's status_detail distinguishes "stuck waiting on a person" from
-        # "stopped because the account is out of money". Both used to look
-        # identical from here: a session that simply never finished.
-        if self._handle_status_detail(task, session):
-            return
-
-        if session["status"] not in {"exit", "error", "suspended"}:
-            return
-
+        # A verdict is actionable the moment it exists, whether or not the
+        # session has formally exited. Observed live: Devin finished the work,
+        # opened the pull request, emitted valid structured output, and then
+        # parked in `waiting_for_user` rather than exiting. Gating on session
+        # status first stranded a finished task until the timeout.
         raw_verdict = session.get("structured_output")
+
         if not raw_verdict:
+            # No verdict yet. Now status_detail matters: it separates "stuck
+            # waiting on a person" from "stopped because the account is out of
+            # money", which otherwise look identical from here.
+            if self._handle_status_detail(task, session):
+                return
+            if session["status"] not in {"exit", "error", "suspended"}:
+                return
             self.store.update(
                 task["id"],
                 state="failed",
                 failure_reason=f"session ended as {session['status']} without structured output",
             )
             return
+
         try:
             verdict = DevinVerdict.model_validate(raw_verdict)
         except ValidationError as exc:

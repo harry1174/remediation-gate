@@ -404,6 +404,32 @@ def test_session_awaiting_a_person_stays_alive_and_is_announced_once(tmp_path):
     assert "waiting_for_approval" in comments[0]
 
 
+def test_verdict_is_acted_on_even_if_the_session_has_not_exited(tmp_path):
+    """Observed in the first live run: Devin opened the PR, emitted valid
+    structured output, then parked in waiting_for_user instead of exiting.
+    Gating on session status first stranded a finished task until timeout."""
+    settings, store, orchestrator, task_id = _dispatched(tmp_path)
+    orchestrator.devin.get_session = lambda sid: {
+        "status": "running",
+        "status_detail": "waiting_for_user",
+        "acus_consumed": 3.0,
+        "url": "https://app.devin.ai/sessions/x",
+        "pr_url": "https://github.com/harry1174/superset/pull/4",
+        "structured_output": {
+            "outcome": "remediated",
+            "summary": "Fixed",
+            "pr_url": "https://github.com/harry1174/superset/pull/4",
+            "verification": {
+                "commands_run": ["pytest tests/unit_tests/utils/test_network.py -q"],
+                "all_passed": True,
+                "evidence": "4 passed",
+            },
+        },
+    }
+    orchestrator.reconcile()
+    assert store.get(task_id)["state"] == "agent_verified_pr"
+
+
 def test_session_records_the_mode_it_ran_in(tmp_path):
     """Unit economics are only reproducible if the mode is pinned and recorded."""
     _, store, _, task_id = _dispatched(tmp_path)
