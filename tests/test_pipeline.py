@@ -252,15 +252,41 @@ def test_ci_success_promotes_to_verified(tmp_path):
     assert snapshot(store, settings)["headline"]["verified_prs"] == 1
 
 
+def test_a_red_build_is_not_failed_while_the_agent_may_still_fix_it(tmp_path):
+    """Devin watches its own PRs and pushes corrections unprompted — observed
+    live, about two minutes after CI went red. Failing instantly would
+    terminalise work the agent was actively repairing."""
+    settings, store, orchestrator, task_id = _claimed_task(tmp_path)
+    orchestrator.github.pr_checks = lambda url: {
+        "conclusion": "failure",
+        "failing": ["lint"],
+        "head_sha": "bad-sha",
+    }
+    orchestrator.reconcile()
+    assert store.get(task_id)["state"] == "agent_verified_pr"  # held, not failed
+
+    # The agent pushes a fix: new head, green. The hold was the right call.
+    orchestrator.github.pr_checks = lambda url: {
+        "conclusion": "success",
+        "failing": [],
+        "head_sha": "good-sha",
+    }
+    orchestrator.reconcile()
+    assert store.get(task_id)["state"] == "verified_pr"
+
+
 def test_ci_failure_after_agent_claims_success_is_a_failure(tmp_path):
     """An overclaim must never be counted as a shipped fix."""
-    settings, store, orchestrator, task_id = _claimed_task(tmp_path)
+    settings, store, orchestrator, task_id = _claimed_task(
+        tmp_path, checks_settle_minutes=0
+    )
     orchestrator.github.pr_checks = lambda url: {
         "conclusion": "failure",
         "failing": ["remediation-verify / lint"],
         "head_sha": "abc123",
     }
-    orchestrator.reconcile()
+    orchestrator.reconcile()   # records the failing sha
+    orchestrator.reconcile()   # settle window elapsed, now terminal
     task = store.get(task_id)
     assert task["state"] == "failed_verification"
     assert task["checks_passed"] == 0

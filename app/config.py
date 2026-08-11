@@ -79,6 +79,14 @@ class Settings:
     checks_grace_minutes: int = field(
         default_factory=lambda: _int("CHECKS_GRACE_MINUTES", 15)
     )
+    # How long a red build is left alone before the task is failed. Devin
+    # watches its own pull requests and pushes fixes without being asked —
+    # observed live, roughly two minutes after CI went red. Adjudicating the
+    # instant a check fails would terminalise a task the agent was in the middle
+    # of repairing, and terminal states here are not revisited.
+    checks_settle_minutes: int = field(
+        default_factory=lambda: _int("CHECKS_SETTLE_MINUTES", 8)
+    )
 
     acu_unit_cost_usd: float = field(
         default_factory=lambda: _float("ACU_UNIT_COST_USD", 2.25)

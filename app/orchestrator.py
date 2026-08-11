@@ -406,22 +406,7 @@ class Orchestrator:
             return
 
         if conclusion == "failure":
-            failing = ", ".join(checks["failing"]) or "unnamed check"
-            self.store.update(
-                task["id"],
-                state="failed_verification",
-                checks_passed=0,
-                failure_reason=f"CI checks failed after the agent reported success: {failing}"[:500],
-            )
-            self.github.add_labels(task["issue_number"], ["devin:needs-human"])
-            self.github.comment(
-                task["issue_number"],
-                f"Devin reported passing verification, but the repository's checks "
-                f"disagree on `{checks['head_sha']}`.\n\n**Failing:** {failing}\n\n"
-                f"{task['pr_url']} is left open for a human. This counts as a "
-                "failure, not a success.",
-            )
-            return
+            return self._handle_failing_checks(task, checks)
 
         # Still pending, or the head commit has no checks at all. Both are fine
         # for a while and neither is fine forever.
@@ -445,6 +430,61 @@ class Orchestrator:
         self.github.comment(
             task["issue_number"],
             f"Could not independently confirm {task['pr_url']}.\n\n**Reason:** {reason}",
+        )
+
+    def _handle_failing_checks(
+        self, task: dict[str, Any], checks: dict[str, Any]
+    ) -> None:
+        """Let the agent fix its own red build before calling the task failed.
+
+        Observed live on issue #8: the first commit carried a lint suppression
+        forward, CI went red, and Devin pushed a corrected commit about two
+        minutes later without anyone asking. Devin watches its own pull requests
+        independently of session state.
+
+        Failing the task the instant a check goes red would have terminalised
+        work the agent was actively repairing — and terminal states here are
+        never revisited. So a red build is given a settling window, and a new
+        head commit resets it, because a new commit means the agent is still
+        working.
+        """
+        head = checks["head_sha"]
+        failing = ", ".join(checks["failing"]) or "unnamed check"
+        now = time.time()
+
+        if task["checks_failed_sha"] != head:
+            # First failure on this commit. Record it and say so, but wait.
+            self.store.update(
+                task["id"], checks_failed_sha=head, checks_failed_at=now
+            )
+            self.store.log(task["id"], "ci_failed_awaiting_agent", {"sha": head})
+            self.github.comment(
+                task["issue_number"],
+                f"CI is red on `{head[:8]}`: **{failing}**.\n\n"
+                f"Holding {task['pr_url']} for "
+                f"{self.settings.checks_settle_minutes} minutes in case the agent "
+                "pushes a correction — it watches its own pull requests. If the "
+                "commit does not change, this becomes a failed verification.",
+            )
+            return
+
+        if now - (task["checks_failed_at"] or now) < self.settings.checks_settle_minutes * 60:
+            return
+
+        self.store.update(
+            task["id"],
+            state="failed_verification",
+            checks_passed=0,
+            failure_reason=f"CI checks failed after the agent reported success: {failing}"[:500],
+        )
+        self.github.add_labels(task["issue_number"], ["devin:needs-human"])
+        self.github.comment(
+            task["issue_number"],
+            f"Devin reported passing verification, but the repository's checks "
+            f"still disagree on `{head}` after "
+            f"{self.settings.checks_settle_minutes} minutes.\n\n"
+            f"**Failing:** {failing}\n\n{task['pr_url']} is left open for a human. "
+            "This counts as a failure, not a success.",
         )
 
     def _reconcile_pr(self, task: dict[str, Any]) -> None:

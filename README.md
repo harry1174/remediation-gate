@@ -105,6 +105,21 @@ To be explicit about what this is and is not evidence of: it demonstrates that
 this service's rejection path works against real GitHub data. It says nothing
 about whether Devin overclaims — across two real remediations, it did not.
 
+**And it repairs its own red builds, unprompted.**
+[Issue #8](https://github.com/harry1174/superset/issues/8) — a regex accepting
+`"1 day laterago"` as valid — produced [PR #11](https://github.com/harry1174/superset/pull/11).
+Its first commit carried a pre-existing `# noqa: E501` forward onto the line it
+was editing, and the verification lane rejected it. About two minutes later Devin
+pushed a second commit splitting the regex across three lines so the suppression
+was no longer needed at all, and CI went green. Nobody asked it to: it watches
+its own pull requests independently of session state.
+
+The result is better than master, which had carried that suppression before any
+of this started. It also exposed a race here: failing a task the instant a check
+goes red would have terminalised work the agent was actively repairing, and
+terminal states are never revisited. A red build is now held for a settling
+window, and a new head commit resets it.
+
 **And it can refuse.** [Issue #7](https://github.com/harry1174/superset/issues/7)
 asks whether a `# noqa: S603` can be removed from `is_host_up`. It cannot — the
 rule fires on the `subprocess` call itself, and every escape route is a stated

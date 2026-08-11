@@ -29,6 +29,8 @@ TASK_COLUMNS = {
     "checks_passed",
     "checks_conclusion",
     "checks_confirmed_at",
+    "checks_failed_sha",
+    "checks_failed_at",
     "devin_mode",
     "acus",
     "attempts",
@@ -64,6 +66,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     checks_passed         INTEGER NOT NULL DEFAULT 0,  -- confirmed by repository CI
     checks_conclusion     TEXT,
     checks_confirmed_at   REAL,
+    checks_failed_sha     TEXT,
+    checks_failed_at      REAL,
     devin_mode            TEXT,
     acus                  REAL NOT NULL DEFAULT 0,
     attempts              INTEGER NOT NULL DEFAULT 0,
@@ -111,6 +115,8 @@ class Store:
             ("checks_passed", "INTEGER NOT NULL DEFAULT 0"),
             ("checks_conclusion", "TEXT"),
             ("checks_confirmed_at", "REAL"),
+            ("checks_failed_sha", "TEXT"),
+            ("checks_failed_at", "REAL"),
             ("devin_mode", "TEXT"),
         ):
             if column not in existing:
