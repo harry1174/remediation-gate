@@ -206,3 +206,17 @@ Sessions parked in `waiting_for_user` after producing a verdict in all three
 runs, including after the Playbook was amended to tell them not to. The
 orchestrator now terminates a session once its task reaches a terminal state,
 which closed all three.
+
+## A note on the recovery counter
+
+`autonomous_ci_recoveries` is derived from the event journal: a task held after
+CI went red that later reached a verified state. The settling-window
+instrumentation that writes that event was added *after* issue #8 ran, so its
+entry was recorded retrospectively, and says so in the journal detail.
+
+The underlying fact is externally checkable rather than asserted:
+[run 31504513261](https://github.com/harry1174/superset/actions/runs/31504513261)
+failed on `58d5ece7`, and
+[run 31504703530](https://github.com/harry1174/superset/actions/runs/31504703530)
+passed on `74845320` after Devin pushed a corrected commit. Every later run
+records the event as it happens.

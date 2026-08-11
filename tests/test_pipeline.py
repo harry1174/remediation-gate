@@ -173,11 +173,11 @@ def test_merged_only_economics(tmp_path):
     assert after["headline"]["cost_per_merged_pr_usd"] == 9.0
 
     # Value figures live under `modeled`, never in the measured headline.
-    assert "modeled_capacity_returned_hours" not in after["headline"]
+    assert "effort_displaced_hours" not in after["headline"]
     band = after["modeled"]
-    assert band["conservative"]["modeled_capacity_returned_hours"] == 1.0
-    assert band["base"]["modeled_capacity_returned_hours"] == 2.5
-    assert band["upside"]["modeled_capacity_returned_hours"] == 4.0
+    assert band["conservative"]["effort_displaced_hours"] == 1.0
+    assert band["base"]["effort_displaced_hours"] == 2.5
+    assert band["upside"]["effort_displaced_hours"] == 4.0
     # Conservative must never flatter the base case.
     assert (
         band["conservative"]["modeled_net_value_usd"]
@@ -292,7 +292,7 @@ def test_ci_failure_after_agent_claims_success_is_a_failure(tmp_path):
     assert task["checks_passed"] == 0
     headline = snapshot(store, settings)["headline"]
     assert headline["verified_prs"] == 0
-    assert headline["agent_overclaims"] == 1
+    assert headline["terminal_ci_contradictions"] == 1
     assert headline["ci_adjudicated"] == 1
     taxonomy = snapshot(store, settings)["failure_taxonomy"]
     assert taxonomy == {"CI contradicted the agent": 1}

@@ -71,7 +71,9 @@ Two issues in a fork of Apache Superset, each triggered by a human adding
 triggered 2  →  session 2  →  agent says verified 2  →  CI confirms 2  →  merged 2
 ```
 
-Median trigger to CI-verified: **13.6 minutes**. Agent overclaims: **0 of 2**.
+Median trigger to CI-verified: **11.6 minutes**. Terminal CI contradictions —
+final agent claims still disputed by CI after the recovery window: **0 of 3**.
+Autonomous CI recoveries: **1**.
 Handed back to a human: **0**. A third issue was correctly **refused**. Total
 cost across all four runs: **$5.72**, or **$2.86 per merged pull request** —
 counting the refusal and the self-repair against merged output rather than

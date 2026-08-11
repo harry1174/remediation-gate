@@ -56,8 +56,10 @@
     .task-title { font-weight: 650; }
     .task-meta, .reason { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
     .state { display: inline-block; padding: 3px 7px; border-radius: 4px; font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace; background: #eef0f6; color: var(--indigo); }
-    .state.merged, .state.pr_open { color: var(--green); background: #eaf7f2; }
-    .state.blocked, .state.failed, .state.failed_verification, .state.timed_out { color: var(--red); background: #fceeee; }
+    .state.merged, .state.verified_pr { color: var(--green); background: #eaf7f2; }
+    .state.agent_verified_pr { color: var(--amber); background: #fff4e7; }
+    .state.blocked, .state.no_change_needed { color: var(--indigo); background: #eef0f6; }
+    .state.failed, .state.failed_verification, .state.timed_out { color: var(--red); background: #fceeee; }
     .state.running, .state.dispatched, .state.dispatching { color: var(--amber); background: #fff4e7; }
     a { color: #315ea8; text-decoration: none; }
     a:hover { text-decoration: underline; }
@@ -100,8 +102,13 @@
   </section>
 
   <section>
-    <h2>Corroboration &mdash; Devin's own analytics, not this database</h2>
-    <div class="panel"><p class="empty" id="corroboration">Checking...</p></div>
+    <h2>Independent source reconciliation</h2>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Evidence</th><th>Control plane</th><th>Devin analytics</th><th></th></tr></thead>
+        <tbody id="corroboration"></tbody>
+      </table>
+    </div>
   </section>
 
   <section>
@@ -118,7 +125,7 @@
     <h2>Task evidence</h2>
     <div class="panel">
       <table>
-        <thead><tr><th>Issue</th><th>Class</th><th>State</th><th>ACUs</th><th>Evidence</th></tr></thead>
+        <thead><tr><th>Issue</th><th>Class</th><th>State</th><th>Cycle time</th><th>Evidence</th></tr></thead>
         <tbody id="tasks"></tbody>
       </table>
       <p class="empty" id="empty">No work triggered yet.</p>
@@ -160,16 +167,13 @@
   function renderStats(headline) {
     const root = document.getElementById('stats');
     root.replaceChildren();
-    addStat(root, 'Cost per merged PR', headline.cost_per_merged_pr_usd == null ? '—' : `$${headline.cost_per_merged_pr_usd}`, headline.cost_basis === 'unavailable: Devin reported no ACU consumption for this account' ? 'Devin reported no ACU consumption for this account — cost withheld rather than shown as $0' : `$${headline.total_execution_cost_usd} across every attempt / ${headline.merged_prs} merged · ${headline.cost_basis}`);
+    addStat(root, 'Remediation yield', `${headline.verified_prs} / ${headline.resolved}`, `${headline.merged_prs} merged · ${headline.handed_back} handed back for a decision · ${headline.failures} failed`);
+    addStat(root, 'Autonomous CI recovery', String(headline.autonomous_ci_recoveries), 'red CI, corrected commit, green — no human involved');
     addStat(root, 'Trigger to CI-verified', headline.median_minutes_to_verified == null ? '—' : `${headline.median_minutes_to_verified}m`, headline.median_minutes_to_agent_pr == null ? 'median' : `agent claimed at ${headline.median_minutes_to_agent_pr}m`);
-    if (headline.success_rate == null) {
-      addStat(root, 'Outcomes', `${headline.verified_prs} / ${headline.resolved}`, `verified of resolved, ${headline.needs_human} handed back — too few to quote a rate`);
-    } else {
-      addStat(root, 'Success rate', `${headline.success_rate}%`, `${headline.verified_prs} verified, ${headline.needs_human} handed back`);
-    }
-    addStat(root, 'Daily budget', `${headline.sessions_today} / ${headline.session_cap}`, headline.acu_budget_enforceable ? `sessions today · ${headline.total_acus} ACUs observed` : 'sessions today — the ACU budget is unenforceable, this account reports none');
+    addStat(root, 'Cost per CI-verified PR', headline.cost_per_verified_pr_usd == null ? '—' : `$${headline.cost_per_verified_pr_usd}`, headline.cost_basis.startsWith('unavailable') ? 'ACUs unavailable on this plan — cost withheld' : `$${headline.total_execution_cost_usd} pilot spend, ${headline.cost_basis}`);
+    addStat(root, 'Rolling 24h session cap', `${headline.sessions_today} / ${headline.session_cap}`, headline.acu_budget_enforceable ? `${headline.total_acus} ACUs observed` : 'the ACU budget cannot be enforced — this plan reports none');
     if (headline.ci_confirmation === 'required') {
-      addStat(root, 'Agent overclaims', `${headline.agent_overclaims} / ${headline.ci_adjudicated}`, 'agent said verified, CI disagreed — this is the playbook defect rate');
+      addStat(root, 'Terminal CI contradictions', `${headline.terminal_ci_contradictions} / ${headline.ci_adjudicated}`, 'final agent claims still contradicted by CI after the recovery window');
     } else {
       addStat(root, 'CI confirmation', 'disabled', 'verified rests on the agent self-report');
     }
@@ -190,22 +194,32 @@
     });
   }
 
-  async function renderCorroboration() {
-    const node = document.getElementById('corroboration');
+  async function renderCorroboration(headline) {
+    const root = document.getElementById('corroboration');
+    root.replaceChildren();
     let c;
     try { c = await (await fetch('/api/corroboration')).json(); }
-    catch (e) { node.textContent = 'Unavailable.'; return; }
+    catch (e) { c = {available: false, reason: 'unreachable'}; }
     if (!c.available) {
-      node.textContent = `Unavailable: ${c.reason}. The figures above come from this service's own database.`;
+      const tr = document.createElement('tr');
+      const td = text('td', `Devin analytics unavailable: ${c.reason}. Every figure above comes from this service's own database.`);
+      td.colSpan = 4;
+      tr.append(td); root.append(tr);
       return;
     }
-    node.textContent =
-      `Devin reports ${c.api_sessions} session(s) created via API by this service `
-      + `(${c.human_sessions} started by a human in the web app), `
-      + `${c.prs_created} pull request(s) created and ${c.prs_merged} merged, over the same window. `
-      + `Those numbers come from Devin's analytics, which this project cannot write to. `
-      + `ACU consumption is omitted: it reports zero on accounts billed in credits, and a zero meaning `
-      + `"not measured" is worse than no number.`;
+    const rows = [
+      ['Sessions created by this service', headline.sessions_started, c.api_sessions],
+      ['Pull requests created', headline.agent_claimed_prs, c.prs_created],
+      ['Pull requests merged', headline.merged_prs, c.prs_merged],
+    ];
+    rows.forEach(([label, local, remote]) => {
+      const tr = document.createElement('tr');
+      tr.append(text('td', label));
+      tr.append(text('td', String(local)));
+      tr.append(text('td', String(remote)));
+      tr.append(text('td', local === remote ? 'match' : 'DIVERGED'));
+      root.append(tr);
+    });
   }
 
   function link(label, url) {
@@ -226,14 +240,14 @@
       const row = document.createElement('tr');
       const issue = document.createElement('td');
       issue.append(text('span', `#${task.issue_number} ${task.title}`, 'task-title'));
-      issue.append(text('span', `${task.elapsed_minutes} minutes elapsed`, 'task-meta'));
+      issue.append(text('span', task.checks_conclusion ? `CI: ${task.checks_conclusion}` : 'no CI verdict yet', 'task-meta'));
       if (task.failure_reason) issue.append(text('span', task.failure_reason, 'reason'));
       row.append(issue);
       row.append(text('td', `${task.class} / ${task.severity}`));
       const stateCell = document.createElement('td');
       stateCell.append(text('span', task.state, `state ${task.state}`));
       row.append(stateCell);
-      row.append(text('td', String(task.acus || '—')));
+      row.append(text('td', task.minutes_to_verified != null ? `${task.minutes_to_verified}m to CI green` : `${task.elapsed_minutes}m elapsed`));
       const evidence = document.createElement('td');
       const links = document.createElement('div');
       links.className = 'links';
@@ -257,7 +271,7 @@
       renderFunnel(data.funnel);
       renderStats(data.headline);
       renderModeled(data.modeled, data.headline.merged_prs);
-      renderCorroboration();
+      renderCorroboration(data.headline);
       renderTasks(data.tasks);
       const a = data.assumptions;
       document.getElementById('assumptions').textContent = `Everything under "Measured" is observed from this pipeline. Everything under "Modeled" is arithmetic on inputs nobody measured here: a baseline of ${a.baseline_human_hours[0]}–${a.baseline_human_hours[2]} engineer hours per remediation (base ${a.baseline_human_hours[1]}), $${a.engineer_hourly_cost_usd}/hour loaded cost, and $${a.acu_unit_cost_usd}/ACU${a.acu_unit_cost_verified ? ' (measured against this account)' : ' — UNVERIFIED PLACEHOLDER, Devin publishes no per-ACU price'}. Every dollar figure on this page derives from that rate.`;

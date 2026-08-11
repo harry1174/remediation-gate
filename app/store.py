@@ -212,6 +212,15 @@ class Store:
             ).fetchone()
         return row is not None
 
+    def task_ids_with_event(self, kind: str) -> set[str]:
+        """Every task that has ever logged an event of this kind."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT task_id FROM events WHERE kind = ? AND task_id IS NOT NULL",
+                (kind,),
+            ).fetchall()
+        return {row[0] for row in rows}
+
     def get(self, task_id: str) -> dict[str, Any] | None:
         with self._conn() as conn:
             row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()

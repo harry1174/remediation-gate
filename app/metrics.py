@@ -41,12 +41,30 @@ def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
         for task in tasks
         if task["state"] in {"dispatching", "dispatched", "running"}
     ]
-    unsuccessful = [
+    # A refusal is not a failure. Issue contracts say so explicitly — "a correct
+    # refusal is a successful outcome here" — so bucketing `blocked` with
+    # `timed_out` contradicts the policy the agent was given, and drags a
+    # correct decision into a failure count.
+    handed_back = [
+        task for task in tasks if task["state"] in {"blocked", "no_change_needed"}
+    ]
+    failures = [
         task
         for task in tasks
-        if task["state"] in TERMINAL_STATES and task["state"] != "merged"
+        if task["state"] in {"failed", "failed_verification", "timed_out"}
     ]
+    unsuccessful = handed_back + failures
     resolved = len(verified) + len(unsuccessful)
+
+    # A pull request the agent brought back from a red build without being
+    # asked. Derived from the event journal rather than asserted: the task was
+    # held after CI failed, and later reached a verified state anyway.
+    held_after_ci_failure = store.task_ids_with_event("ci_failed_awaiting_agent")
+    autonomous_recoveries = [
+        task
+        for task in tasks
+        if task["id"] in held_after_ci_failure and task["checks_passed"]
+    ]
     total_acus = sum(float(task["acus"]) for task in tasks)
     merged_acus = sum(float(task["acus"]) for task in merged)
     # Two different cycle times. The first is when the agent asserted a PR; the
@@ -86,8 +104,11 @@ def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
         devin_cost = None
         cost_basis = "unavailable: Devin reported no ACU consumption for this account"
 
+    stamps = [task["created_at"] for task in tasks]
     return {
         "generated_at": now,
+        "window": {"from": min(stamps) if stamps else None,
+                   "to": max(stamps) if stamps else None},
         "mode": "demo" if settings.demo_mode else "live",
         "repo": settings.github_repo,
         "policy": {
@@ -103,16 +124,23 @@ def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
         ],
         "headline": {
             "active": len(active),
+            "sessions_started": sum(bool(task["session_id"]) for task in tasks),
             "agent_claimed_prs": len(agent_claimed),
             "verified_prs": len(verified),
             # How often the agent said "verified" and CI disagreed. This is the
             # Playbook's defect rate, and the only honest way to know whether
             # editing the Playbook made things better.
             "ci_adjudicated": len(adjudicated),
-            "agent_overclaims": len(overclaimed),
+            # Named for what it measures. A build that went red and was repaired
+            # inside the settling window is not a contradiction — it is a
+            # recovery, and it is counted as one below.
+            "terminal_ci_contradictions": len(overclaimed),
+            "autonomous_ci_recoveries": len(autonomous_recoveries),
             "ci_confirmation": "required" if settings.require_ci_checks else "disabled",
             "merged_prs": len(merged),
             "needs_human": len(unsuccessful),
+            "handed_back": len(handed_back),
+            "failures": len(failures),
             "resolved": resolved,
             "success_rate": round(len(verified) / resolved * 100, 1)
             if resolved >= MIN_SAMPLE_FOR_RATE
@@ -128,6 +156,9 @@ def snapshot(store: Store, settings: Settings) -> dict[str, Any]:
                 sum(float(task["acus"]) for task in verified) / len(verified), 2
             )
             if verified
+            else None,
+            "cost_per_verified_pr_usd": round(devin_cost / len(verified), 2)
+            if verified and devin_cost is not None
             else None,
             "cost_per_merged_pr_usd": round(devin_cost / len(merged), 2)
             if merged and devin_cost is not None
@@ -189,9 +220,13 @@ def _scenarios(
         capacity = merged_count * hours
         out[name] = {
             "baseline_hours_per_remediation": hours,
-            "modeled_capacity_returned_hours": round(capacity, 1),
+            # Not "capacity returned": human triage, review and merge time have
+            # not been measured, so this is effort that might be displaced, not
+            # hours anyone has got back. Rounded to whole dollars — cents here
+            # would imply a precision the inputs do not have.
+            "effort_displaced_hours": round(capacity, 1),
             "modeled_net_value_usd": round(
-                capacity * settings.engineer_hourly_cost_usd - execution_cost_usd, 2
+                capacity * settings.engineer_hourly_cost_usd - execution_cost_usd
             ),
         }
     return out
@@ -219,7 +254,16 @@ def _failure_bucket(task: dict[str, Any]) -> str:
 
 
 def _task_view(task: dict[str, Any], now: float) -> dict[str, Any]:
-    end = task["merged_at"] or task["pr_opened_at"] or task["completed_at"] or now
+    # CI confirmation before the agent's PR timestamp: for a verified task the
+    # latter understates the cycle, and the two disagreeing on one row is the
+    # kind of thing a careful reader notices.
+    end = (
+        task["merged_at"]
+        or task["checks_confirmed_at"]
+        or task["pr_opened_at"]
+        or task["completed_at"]
+        or now
+    )
     return {
         "id": task["id"],
         "issue_number": task["issue_number"],
