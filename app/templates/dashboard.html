@@ -90,7 +90,11 @@
     .links { display: flex; flex-wrap: wrap; gap: 6px; }
     .links a { padding: 3px 7px; border: 1px solid #cbd7e6; border-radius: 4px; background: #f8fafd; font-size: 11.5px; }
     .empty { padding: 26px; color: var(--muted); }
-    .sankey { width: 100%; height: auto; margin: 2px 0 10px; display: block; }
+    .sankey { width: 100%; height: auto; display: block; }
+    .sankey text.owner { font: 700 10px Inter, system-ui, sans-serif; fill: var(--muted); letter-spacing: .08em; }
+    .sankey text.node { font: 600 11.5px Inter, system-ui, sans-serif; fill: var(--ink); }
+    .sankey .lane { fill: #f2f5f9; }
+    .sankey .lane.agent { fill: #eef4f1; }
     .sankey text { font: 12px Inter, system-ui, sans-serif; fill: var(--ink); }
     .sankey text.count { font-weight: 700; }
     .sankey text.cap { fill: var(--muted); font-size: 11px; }
@@ -145,7 +149,6 @@
       <p class="section-kicker">Pilot outcome</p>
       <h2 class="hero-title" id="outcome-title">Loading pilot evidence...</h2>
       <p class="hero-summary" id="outcome-summary"></p>
-      <svg class="sankey" id="outcome-flow" role="img" aria-label="Pilot outcome flow" viewBox="0 0 900 190" preserveAspectRatio="xMidYMid meet"></svg>
       <div class="legend" id="outcome-legend"></div>
     </div>
     <aside class="decision-card">
@@ -194,10 +197,12 @@
 
   <section>
     <div class="section-head">
-      <div><p class="section-kicker">Operating telemetry</p><h2>Workflow progression</h2></div>
-      <p class="subtitle">Stage counts, not conversion: a handback is governed and merging remains a human decision.</p>
+      <div><p class="section-kicker">Operating telemetry</p><h2>How work flows, and who owns each step</h2></div>
+      <p class="subtitle">Ribbon widths are task counts. Every branch is an intended outcome: a handback is a governed decision and merging remains a human one.</p>
     </div>
-    <div class="progression" id="funnel"></div>
+    <div class="panel" style="padding:10px 16px 16px">
+      <svg class="sankey" id="outcome-flow" role="img" aria-label="End-to-end flow from approved issue through Devin to merged pull request" viewBox="0 0 1140 250" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
   </section>
 
   <section>
@@ -238,19 +243,6 @@
     return node;
   };
 
-  function renderFunnel(rows) {
-    const root = document.getElementById('funnel');
-    root.replaceChildren();
-    const labels = {triggered: 'Triggered', session: 'Devin session', agent_pr: 'Agent says verified', verified_pr: 'CI confirms', merged: 'Merged'};
-    rows.forEach(row => {
-      const stage = document.createElement('div');
-      stage.className = 'stage';
-      stage.append(text('span', labels[row.stage], 'stage-label'));
-      stage.append(text('strong', String(row.count), 'stage-value'));
-      root.append(stage);
-    });
-  }
-
   function addStat(root, label, value, note) {
     const card = document.createElement('div');
     card.className = 'stat';
@@ -267,67 +259,62 @@
     return node;
   };
 
-  // Minimal Sankey: three columns, ribbons proportional to task counts.
-  // Written by hand rather than pulled from a library so the page stays a
-  // single self-contained file with no external requests.
-  function drawSankey(total, stage2, stage3, neutral) {
+  // Sankey over the whole deployment chain, with an ownership band above it.
+  // The point for leadership is not the counts — it is which columns a human
+  // touches and which Devin carries alone. Hand-written SVG so the page stays
+  // one self-contained file with no external requests.
+  function drawSankey(cols, owners) {
     const svg = document.getElementById('outcome-flow');
     svg.replaceChildren();
+    const total = cols[0].nodes.reduce((s, n) => s + n.n, 0);
     if (!total) return;
 
-    const W = 900, H = 190, NODE = 13, TOP = 26, BOT = 26;
-    const usable = H - TOP - BOT;
-    const unit = usable / total;
-    const gap = 10;
-    const cols = [40, 430, 830];
+    const W = 1140, H = 250, NODE = 12, TOP = 76, BOT = 22, GAP = 14;
+    const unit = (H - TOP - BOT - GAP * 2) / total;
+    const step = (W - 150) / (cols.length - 1);
+    const x = i => 60 + i * step;
 
-    const band = (x, y, h, colour, label, count, anchor) => {
-      svg.append(svgEl('rect', {x, y, width: NODE, height: Math.max(h, 3),
-                                rx: 3, fill: colour}));
-      const tx = anchor === 'end' ? x - 9 : x + NODE + 9;
-      const t1 = svgEl('text', {x: tx, y: y + Math.max(h, 3) / 2 - 1,
-                                'text-anchor': anchor, class: 'count'});
-      t1.textContent = count;
-      const t2 = svgEl('text', {x: tx, y: y + Math.max(h, 3) / 2 + 14,
-                                'text-anchor': anchor, class: 'cap'});
-      t2.textContent = label;
-      svg.append(t1, t2);
-    };
-
-    const ribbon = (x0, y0, h0, x1, y1, h1, colour) => {
-      const mid = (x0 + x1) / 2;
-      const d = `M${x0},${y0} C${mid},${y0} ${mid},${y1} ${x1},${y1} `
-              + `L${x1},${y1 + h1} C${mid},${y1 + h1} ${mid},${y0 + h0} ${x0},${y0 + h0} Z`;
-      svg.append(svgEl('path', {d, fill: colour, class: 'flow'}));
-    };
-
-    // Column 1: every approved task.
-    band(cols[0], TOP, total * unit, neutral, 'Approved tasks', total, 'start');
-
-    // Column 2: how each task was disposed of.
-    let srcY = TOP, y2 = TOP;
-    const pos2 = {};
-    stage2.forEach((s, i) => {
-      const h = s.n * unit;
-      const y = y2 + i * gap;
-      ribbon(cols[0] + NODE, srcY, h, cols[1], y, h, s.colour);
-      band(cols[1], y, h, s.colour, s.label, s.n, 'start');
-      pos2[s.key] = {y, h};
-      srcY += h; y2 += h;
+    // Ownership lanes across the top: who is accountable for each column.
+    owners.forEach(o => {
+      const x0 = x(o.from) - 26, x1 = x(o.to) + NODE + 26;
+      svg.append(svgEl('rect', {x: x0, y: 16, width: x1 - x0, height: 26, rx: 5,
+                                class: 'lane' + (o.agent ? ' agent' : '')}));
+      const label = svgEl('text', {x: (x0 + x1) / 2, y: 33, 'text-anchor': 'middle',
+                                   class: 'owner'});
+      label.textContent = o.label.toUpperCase();
+      svg.append(label);
     });
 
-    // Column 3: what happened to the proposed fixes.
-    let y3 = TOP;
-    stage3.forEach((s, i) => {
-      const h = s.n * unit;
-      const y = y3 + i * gap;
-      const parent = pos2[s.from];
-      if (parent) {
-        ribbon(cols[1] + NODE, parent.y + (parent.consumed || 0), h, cols[2], y, h, s.colour);
-        parent.consumed = (parent.consumed || 0) + h;
-      }
-      band(cols[2], y, h, s.colour, s.label, s.n, 'end');
-      y3 += h;
+    const placed = [];
+    cols.forEach((col, ci) => {
+      let y = TOP;
+      const here = {};
+      col.nodes.filter(n => n.n > 0).forEach(node => {
+        const h = Math.max(node.n * unit, 4);
+        svg.append(svgEl('rect', {x: x(ci), y, width: NODE, height: h, rx: 3,
+                                  fill: node.colour}));
+        const caption = svgEl('text', {x: x(ci) + NODE / 2, y: y - 8,
+                                       'text-anchor': 'middle', class: 'node'});
+        caption.textContent = `${node.n} ${node.label}`;
+        svg.append(caption);
+        here[node.key] = {y, h, used: 0, colour: node.colour};
+
+        // Ribbon back to whichever node in the previous column fed this one.
+        if (ci > 0) {
+          const parent = placed[ci - 1][node.from] || Object.values(placed[ci - 1])[0];
+          if (parent) {
+            const py = parent.y + parent.used;
+            const x0 = x(ci - 1) + NODE, x1 = x(ci), mid = (x0 + x1) / 2;
+            svg.append(svgEl('path', {
+              d: `M${x0},${py} C${mid},${py} ${mid},${y} ${x1},${y} `
+                 + `L${x1},${y + h} C${mid},${y + h} ${mid},${py + h} ${x0},${py + h} Z`,
+              fill: node.colour, class: 'flow'}));
+            parent.used += h;
+          }
+        }
+        y += h + GAP;
+      });
+      placed.push(here);
     });
   }
 
@@ -339,24 +326,34 @@
       `${headline.merged_prs} merged · ${awaitingN} awaiting human merge · `
       + `${headline.handed_back} governed handback · ${headline.failures} failed`;
 
-    // A Sankey rather than a bar: this is a branching decision flow, and the
-    // shape should show where judgement was exercised. Every terminal node is
-    // an intended outcome except `failed`, so nothing here is drawn as
-    // attrition.
-    const COLOUR = {
-      merged: '#168466', awaiting: '#7fbfa8', handback: '#4a57a8',
-      failed: '#b33a3a', neutral: '#8f9bb0',
-    };
-    const stage2 = [
-      {key: 'fix', label: 'Fix proposed', n: headline.verified_prs, colour: COLOUR.merged},
-      {key: 'handback', label: 'Governed handback', n: headline.handed_back, colour: COLOUR.handback},
-      {key: 'failed', label: 'Failed', n: headline.failures, colour: COLOUR.failed},
-    ].filter(s => s.n > 0);
-    const stage3 = [
-      {key: 'merged', label: 'Merged', n: headline.merged_prs, colour: COLOUR.merged, from: 'fix'},
-      {key: 'awaiting', label: 'Awaiting merge', n: awaitingN, colour: COLOUR.awaiting, from: 'fix'},
-    ].filter(s => s.n > 0);
-    drawSankey(headline.resolved, stage2, stage3, COLOUR.neutral);
+    // The full chain, not just the outcome split: a human approves, Devin
+    // carries the middle alone, the repository's CI adjudicates, a human
+    // decides whether it lands. The ownership band is the argument.
+    const C = {approve: '#8f9bb0', agent: '#168466', hand: '#4a57a8',
+               bad: '#b33a3a', wait: '#7fbfa8'};
+    const contradicted = headline.terminal_ci_contradictions;
+    drawSankey([
+      {nodes: [{key: 'approved', label: 'approved', n: headline.resolved, colour: C.approve}]},
+      {nodes: [{key: 'session', label: 'Devin sessions', n: headline.sessions_started, colour: C.approve, from: 'approved'}]},
+      {nodes: [
+        {key: 'proposed', label: 'fixes proposed', n: headline.agent_claimed_prs, colour: C.agent, from: 'session'},
+        {key: 'handback', label: 'governed handback', n: headline.handed_back, colour: C.hand, from: 'session'},
+        {key: 'failed', label: 'failed', n: headline.failures, colour: C.bad, from: 'session'},
+      ]},
+      {nodes: [
+        {key: 'confirmed', label: 'CI confirmed', n: headline.verified_prs, colour: C.agent, from: 'proposed'},
+        {key: 'rejected', label: 'CI rejected', n: contradicted, colour: C.bad, from: 'proposed'},
+      ]},
+      {nodes: [
+        {key: 'merged', label: 'merged', n: headline.merged_prs, colour: C.agent, from: 'confirmed'},
+        {key: 'awaiting', label: 'awaiting merge', n: awaitingN, colour: C.wait, from: 'confirmed'},
+      ]},
+    ], [
+      {from: 0, to: 0, label: 'Human approves'},
+      {from: 1, to: 2, label: 'Devin investigates, implements, decides', agent: true},
+      {from: 3, to: 3, label: 'Repository CI adjudicates'},
+      {from: 4, to: 4, label: 'Human merges'},
+    ]);
 
     const segs = [
       ['seg-merged', headline.merged_prs, 'Merged'],
@@ -572,7 +569,6 @@
       mode.textContent = data.mode === 'live' ? 'Live · Devin API' : 'Demo · no ACUs spent';
       mode.className = `mode ${data.mode}`;
       renderDecision(data);
-      renderFunnel(data.funnel);
       renderOutcomes(data.headline);
       renderStats(data.headline);
       renderModeled(data.modeled, data.headline.merged_prs);
