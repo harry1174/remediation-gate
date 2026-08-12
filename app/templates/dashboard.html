@@ -65,6 +65,12 @@
     a:hover { text-decoration: underline; }
     .links { display: flex; flex-wrap: wrap; gap: 8px; }
     .empty { padding: 26px; color: var(--muted); }
+    .tree { padding: 18px 20px; font-size: 14px; line-height: 1.9; }
+    .tree .lead { font-size: 17px; font-weight: 650; }
+    .tree .branch { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+    .tree .good { color: var(--green); font-weight: 650; }
+    .tree .neutral { color: var(--indigo); font-weight: 650; }
+    .tree .note { color: var(--muted); }
     footer { margin-top: 22px; color: var(--muted); font-size: 12px; }
     @media (max-width: 800px) {
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -92,13 +98,35 @@
   </header>
 
   <section>
-    <h2>Delivery funnel</h2>
+    <h2>Outcomes</h2>
+    <div class="panel" id="outcomes"></div>
+  </section>
+
+  <section>
+    <h2>Observed</h2>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section>
+    <h2>Guardrails</h2>
+    <div class="stats" id="guardrails"></div>
+  </section>
+
+  <section>
+    <h2>Workflow progression</h2>
+    <p class="subtitle" style="margin:0 0 11px">Stage counts, not a conversion funnel: a refusal is a governed outcome and merging is a human decision, so neither step down is a loss.</p>
     <div class="funnel" id="funnel"></div>
   </section>
 
   <section>
-    <h2>Measured</h2>
-    <div class="stats" id="stats"></div>
+    <h2>Task evidence</h2>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Issue</th><th>Class</th><th>State</th><th>Cycle time</th><th>Evidence</th></tr></thead>
+        <tbody id="tasks"></tbody>
+      </table>
+      <p class="empty" id="empty">No work triggered yet.</p>
+    </div>
   </section>
 
   <section>
@@ -119,17 +147,6 @@
         <thead><tr><th>Scenario</th><th>Baseline hours per remediation</th><th>Effort displaced</th><th>Net value</th></tr></thead>
         <tbody id="modeled"></tbody>
       </table>
-    </div>
-  </section>
-
-  <section>
-    <h2>Task evidence</h2>
-    <div class="panel">
-      <table>
-        <thead><tr><th>Issue</th><th>Class</th><th>State</th><th>Cycle time</th><th>Evidence</th></tr></thead>
-        <tbody id="tasks"></tbody>
-      </table>
-      <p class="empty" id="empty">No work triggered yet.</p>
     </div>
   </section>
 
@@ -165,19 +182,67 @@
     root.append(card);
   }
 
+  function renderOutcomes(headline) {
+    const root = document.getElementById('outcomes');
+    root.replaceChildren();
+    const box = document.createElement('div');
+    box.className = 'tree';
+    const awaiting = headline.verified_prs - headline.merged_prs;
+    const rows = [
+      ['lead', `${headline.resolved} approved issues resolved`],
+      ['branch', `├── `, 'good', `${headline.verified_prs} remediated`, 'note',
+        ` — CI-verified pull requests${headline.autonomous_ci_recoveries ? `, ${headline.autonomous_ci_recoveries} after recovering from a red build unaided` : ''}`],
+      ['branch', `│   ├── `, 'good', `${headline.merged_prs} merged`, 'note', ''],
+      ['branch', `│   └── `, 'note', `${awaiting} awaiting a human merge decision`, 'note', ''],
+      ['branch', `└── `, 'neutral', `${headline.handed_back} safely handed back`, 'note',
+        ' — needs an engineering decision'],
+    ];
+    rows.forEach(row => {
+      const line = document.createElement('div');
+      if (row[0] === 'lead') { line.append(text('span', row[1], 'lead')); }
+      else {
+        line.append(text('span', row[1], 'branch'));
+        line.append(text('span', row[3], row[2]));
+        if (row[5]) line.append(text('span', row[5], 'note'));
+      }
+      box.append(line);
+    });
+    const tail = document.createElement('div');
+    tail.className = 'note';
+    tail.style.marginTop = '10px';
+    tail.textContent = headline.failures === 0
+      ? 'No failures. A refusal is a governed outcome, not a conversion loss.'
+      : `${headline.failures} failed — see the task table.`;
+    box.append(tail);
+    root.append(box);
+  }
+
   function renderStats(headline) {
+    // Observed outcomes only: delivery and cost. Everything that answers
+    // "is this contained?" rather than "did it work?" lives in guardrails.
     const root = document.getElementById('stats');
     root.replaceChildren();
-    addStat(root, 'Remediation yield', `${headline.verified_prs} / ${headline.resolved}`, `${headline.merged_prs} merged · ${headline.handed_back} handed back for a decision · ${headline.failures} failed`);
-    addStat(root, 'Autonomous CI recovery', String(headline.autonomous_ci_recoveries), 'red CI, corrected commit, green — no human involved');
-    addStat(root, 'Trigger to CI-verified', headline.median_minutes_to_verified == null ? '—' : `${headline.median_minutes_to_verified}m`, headline.median_minutes_to_agent_pr == null ? 'median' : `agent claimed at ${headline.median_minutes_to_agent_pr}m`);
-    addStat(root, 'Cost per CI-verified PR', headline.cost_per_verified_pr_usd == null ? '—' : `$${headline.cost_per_verified_pr_usd}`, headline.cost_basis.startsWith('unavailable') ? 'ACUs unavailable on this plan — cost withheld' : `$${headline.total_execution_cost_usd} pilot spend, ${headline.cost_basis}`);
-    addStat(root, 'Rolling 24h session cap', `${headline.sessions_today} / ${headline.session_cap}`, headline.acu_budget_enforceable ? `${headline.total_acus} ACUs observed` : 'the ACU budget cannot be enforced — this plan reports none');
+    addStat(root, 'Remediation yield', `${headline.verified_prs} / ${headline.resolved}`,
+      `CI-verified of resolved · ${headline.handed_back} handed back · ${headline.failures} failed`);
+    addStat(root, 'Trigger to CI-verified', headline.median_minutes_to_verified == null ? '—' : `${headline.median_minutes_to_verified}m`,
+      headline.median_minutes_to_agent_pr == null ? 'median' : `median · agent claimed at ${headline.median_minutes_to_agent_pr}m`);
+    addStat(root, 'Cost per CI-verified PR', headline.cost_per_verified_pr_usd == null ? '—' : `$${headline.cost_per_verified_pr_usd}`,
+      headline.cost_basis.startsWith('unavailable') ? 'ACUs unavailable on this plan — cost withheld' : `$${headline.total_execution_cost_usd} total, ${headline.cost_basis}`);
+    addStat(root, 'Merged', `${headline.merged_prs}`, `${headline.verified_prs - headline.merged_prs} verified and awaiting a human decision`);
+
+    const guard = document.getElementById('guardrails');
+    guard.replaceChildren();
     if (headline.ci_confirmation === 'required') {
-      addStat(root, 'Terminal CI contradictions', `${headline.terminal_ci_contradictions} / ${headline.ci_adjudicated}`, 'final agent claims still contradicted by CI after the recovery window');
+      addStat(guard, 'Terminal CI contradictions', `${headline.terminal_ci_contradictions} / ${headline.ci_adjudicated}`,
+        'final agent claims still disputed by CI after the recovery window');
     } else {
-      addStat(root, 'CI confirmation', 'disabled', 'verified rests on the agent self-report');
+      addStat(guard, 'CI confirmation', 'disabled', 'verified rests on the agent self-report');
     }
+    addStat(guard, 'Rolling 24h session cap', `${headline.sessions_today} / ${headline.session_cap}`,
+      headline.acu_budget_enforceable ? `${headline.total_acus} ACUs observed` : 'the ACU budget cannot be enforced — this plan reports none');
+    addStat(guard, 'Autonomous CI recovery', String(headline.autonomous_ci_recoveries),
+      'capability observed, not a rate — one occurrence');
+    addStat(guard, 'In flight', String(headline.active), 'sessions currently running');
   }
 
   function renderModeled(modeled, merged) {
@@ -266,11 +331,16 @@
     try {
       const response = await fetch('/api/metrics');
       const data = await response.json();
-      document.getElementById('repo').textContent = data.repo;
+      const w = data.window;
+      const span = w && w.from ? `${new Date(w.from * 1000).toLocaleDateString()} – ${new Date(w.to * 1000).toLocaleDateString()}` : 'no activity';
+      document.getElementById('repo').textContent =
+        `${data.repo} · pilot window ${span} · ${data.headline.active} active, `
+        + `${data.headline.resolved} resolved · updated ${new Date(data.generated_at * 1000).toLocaleTimeString()}`;
       const mode = document.getElementById('mode');
       mode.textContent = data.mode === 'live' ? 'Live · Devin API' : 'Demo · no ACUs spent';
       mode.className = `mode ${data.mode}`;
       renderFunnel(data.funnel);
+      renderOutcomes(data.headline);
       renderStats(data.headline);
       renderModeled(data.modeled, data.headline.merged_prs);
       renderCorroboration(data.headline);
