@@ -71,6 +71,15 @@
     .tree .good { color: var(--green); font-weight: 650; }
     .tree .neutral { color: var(--indigo); font-weight: 650; }
     .tree .note { color: var(--muted); }
+    .split { display: flex; height: 34px; border-radius: 5px; overflow: hidden; margin: 4px 0 14px; }
+    .split span { display: flex; align-items: center; justify-content: center; color: #fff; font: 650 12px Inter, system-ui, sans-serif; min-width: 2px; }
+    .seg-merged { background: var(--green); }
+    .seg-awaiting { background: #7fbfa8; }
+    .seg-handback { background: var(--indigo); }
+    .seg-failed { background: var(--red); }
+    .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12.5px; color: var(--muted); margin-bottom: 14px; }
+    .legend b { color: var(--ink); }
+    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: baseline; }
     footer { margin-top: 22px; color: var(--muted); font-size: 12px; }
     @media (max-width: 800px) {
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -108,7 +117,7 @@
   </section>
 
   <section>
-    <h2>Guardrails</h2>
+    <h2>Trust and operational control</h2>
     <div class="stats" id="guardrails"></div>
   </section>
 
@@ -131,7 +140,7 @@
 
   <section>
     <h2>Source reconciliation</h2>
-    <p class="subtitle" style="margin:0 0 11px">This database is the operational ledger. Devin analytics is the vendor-side record of the same activity. GitHub Actions, above, is the independent proof of technical correctness.</p>
+    <p class="subtitle" style="margin:0 0 11px">This database is the operational ledger. Devin analytics is the vendor-side record of the same activity. GitHub Actions is independent repository acceptance evidence — it proves the repository's defined checks passed, not that the change is free of every defect.</p>
     <div class="panel">
       <table>
         <thead><tr><th>Evidence</th><th>Control plane</th><th>Devin analytics</th><th></th></tr></thead>
@@ -187,15 +196,47 @@
     root.replaceChildren();
     const box = document.createElement('div');
     box.className = 'tree';
+
+    // A proportional bar reads in a glance; the tree beneath it explains the
+    // structure. Merging is a human decision and a handback is a governed
+    // outcome, so neither is drawn as a loss.
+    const awaitingN = headline.verified_prs - headline.merged_prs;
+    const segs = [
+      ['seg-merged', headline.merged_prs, 'Merged'],
+      ['seg-awaiting', awaitingN, 'Awaiting merge'],
+      ['seg-handback', headline.handed_back, 'Governed handback'],
+      ['seg-failed', headline.failures, 'Failed'],
+    ].filter(s => s[1] > 0);
+    const total = segs.reduce((sum, s) => sum + s[1], 0) || 1;
+    const bar = document.createElement('div');
+    bar.className = 'split';
+    segs.forEach(([cls, n]) => {
+      const seg = text('span', String(n), cls);
+      seg.style.flex = `${n} 0 0`;
+      bar.append(seg);
+    });
+    box.append(bar);
+    const legend = document.createElement('div');
+    legend.className = 'legend';
+    segs.forEach(([cls, n, label]) => {
+      const item = document.createElement('span');
+      const swatch = document.createElement('i');
+      swatch.className = 'dot ' + cls;
+      item.append(swatch);
+      item.append(text('b', `${n} `));
+      item.append(text('span', label));
+      legend.append(item);
+    });
+    box.append(legend);
     const awaiting = headline.verified_prs - headline.merged_prs;
     const rows = [
-      ['lead', `${headline.resolved} approved issues resolved`],
-      ['branch', `├── `, 'good', `${headline.verified_prs} remediated`, 'note',
-        ` — CI-verified pull requests${headline.autonomous_ci_recoveries ? `, ${headline.autonomous_ci_recoveries} after recovering from a red build unaided` : ''}`],
+      ['lead', `${headline.resolved} approved tasks completed`],
+      ['branch', `├── `, 'good', `${headline.verified_prs} CI-verified fixes proposed`, 'note',
+        `${headline.autonomous_ci_recoveries ? ` — ${headline.autonomous_ci_recoveries} after recovering from a red build unaided` : ''}`],
       ['branch', `│   ├── `, 'good', `${headline.merged_prs} merged`, 'note', ''],
       ['branch', `│   └── `, 'note', `${awaiting} awaiting a human merge decision`, 'note', ''],
-      ['branch', `└── `, 'neutral', `${headline.handed_back} safely handed back`, 'note',
-        ' — needs an engineering decision'],
+      ['branch', `└── `, 'neutral', `${headline.handed_back} governed handback`, 'note',
+        ' — no compliant in-scope fix; returned for an engineering decision'],
     ];
     rows.forEach(row => {
       const line = document.createElement('div');
@@ -222,8 +263,8 @@
     // "is this contained?" rather than "did it work?" lives in guardrails.
     const root = document.getElementById('stats');
     root.replaceChildren();
-    addStat(root, 'Remediation yield', `${headline.verified_prs} / ${headline.resolved}`,
-      `CI-verified of resolved · ${headline.handed_back} handed back · ${headline.failures} failed`);
+    addStat(root, 'CI-verified fixes', String(headline.verified_prs),
+      `from ${headline.resolved} completed tasks · ${headline.handed_back} governed handback · ${headline.failures} failed`);
     addStat(root, 'Trigger to CI-verified', headline.median_minutes_to_verified == null ? '—' : `${headline.median_minutes_to_verified}m`,
       headline.median_minutes_to_agent_pr == null ? 'median' : `median · agent claimed at ${headline.median_minutes_to_agent_pr}m`);
     addStat(root, 'Cost per CI-verified PR', headline.cost_per_verified_pr_usd == null ? '—' : `$${headline.cost_per_verified_pr_usd}`,
@@ -233,8 +274,8 @@
     const guard = document.getElementById('guardrails');
     guard.replaceChildren();
     if (headline.ci_confirmation === 'required') {
-      addStat(guard, 'Terminal CI contradictions', `${headline.terminal_ci_contradictions} / ${headline.ci_adjudicated}`,
-        'final agent claims still disputed by CI after the recovery window');
+      addStat(guard, 'Independent CI confirmation', `${headline.ci_adjudicated - headline.terminal_ci_contradictions} / ${headline.ci_adjudicated}`,
+        `${headline.terminal_ci_contradictions} unresolved agent/CI disagreements after the recovery window`);
     } else {
       addStat(guard, 'CI confirmation', 'disabled', 'verified rests on the agent self-report');
     }
@@ -298,6 +339,23 @@
     return anchor;
   }
 
+  // Implementation state names are not for a reader. A VP should not have to
+  // know what `agent_verified_pr` means; the raw value stays as a tooltip.
+  const STATE_LABEL = {
+    merged: 'Merged',
+    verified_pr: 'CI verified',
+    agent_verified_pr: 'Awaiting CI',
+    blocked: 'Governed handback',
+    no_change_needed: 'No change needed',
+    failed_verification: 'CI rejected',
+    failed: 'Failed',
+    timed_out: 'Timed out',
+    running: 'Devin working',
+    dispatched: 'Session starting',
+    dispatching: 'Dispatching',
+    queued: 'Queued',
+  };
+
   function renderTasks(tasks) {
     const root = document.getElementById('tasks');
     const empty = document.getElementById('empty');
@@ -308,11 +366,22 @@
       const issue = document.createElement('td');
       issue.append(text('span', `#${task.issue_number} ${task.title}`, 'task-title'));
       issue.append(text('span', task.checks_conclusion ? `CI: ${task.checks_conclusion}` : 'no CI verdict yet', 'task-meta'));
-      if (task.failure_reason) issue.append(text('span', task.failure_reason, 'reason'));
+      if (task.failure_reason) {
+        const full = task.failure_reason;
+        const short = task.state === 'blocked'
+          ? 'No compliant in-scope fix; returned for an engineering decision.'
+          : (full.length > 120 ? full.slice(0, 117) + '…' : full);
+        const node = text('span', short, 'reason');
+        node.title = full;
+        issue.append(node);
+      }
       row.append(issue);
       row.append(text('td', `${task.class} / ${task.severity}`));
       const stateCell = document.createElement('td');
-      stateCell.append(text('span', task.state, `state ${task.state}`));
+      const label = STATE_LABEL[task.state] || task.state;
+      const badge = text('span', label, `state ${task.state}`);
+      badge.title = task.state;
+      stateCell.append(badge);
       row.append(stateCell);
       row.append(text('td', task.minutes_to_verified != null ? `${task.minutes_to_verified}m to CI green` : `${task.elapsed_minutes}m elapsed`));
       const evidence = document.createElement('td');
@@ -346,7 +415,17 @@
       renderCorroboration(data.headline);
       renderTasks(data.tasks);
       const a = data.assumptions;
-      document.getElementById('assumptions').textContent = `Everything under "Measured" is observed from this pipeline. Everything under "Modeled" is arithmetic on inputs nobody measured here: a baseline of ${a.baseline_human_hours[0]}–${a.baseline_human_hours[2]} engineer hours per remediation (base ${a.baseline_human_hours[1]}), $${a.engineer_hourly_cost_usd}/hour loaded cost, and $${a.acu_unit_cost_usd}/ACU${a.acu_unit_cost_verified ? ' (measured against this account)' : ' — UNVERIFIED PLACEHOLDER, Devin publishes no per-ACU price'}. Every dollar figure on this page derives from that rate.`;
+      const measured = data.headline.cost_basis.indexOf('balance') !== -1;
+      document.getElementById('assumptions').textContent =
+        `Observed figures come from this pipeline and the repository's own CI. `
+        + (measured
+            ? `Spend of $${data.headline.total_execution_cost_usd} was read from the Devin account balance before and after each run — this plan reports no ACU consumption, so no dollar figure here is derived from an ACU rate. `
+            : `Spend is derived from an ACU rate of $${a.acu_unit_cost_usd}. `)
+        + `The Modeled panel is arithmetic on inputs nobody measured here: a baseline of `
+        + `${a.baseline_human_hours[0]}\u2013${a.baseline_human_hours[2]} engineer hours per remediation `
+        + `(base ${a.baseline_human_hours[1]}) at $${a.engineer_hourly_cost_usd}/hour. It is a business-case `
+        + `calculator showing what would need to be true, not a saving anyone has banked. `
+        + `Human triage, review and merge time are not measured, so no capacity figure is net.`;
     } catch (_) {
       document.getElementById('repo').textContent = 'Metrics unavailable';
     }
