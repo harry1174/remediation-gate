@@ -2,10 +2,10 @@
 
 help:
 	@echo "make up      Build and start the service"
-	@echo "make demo    Replay the two signed issue-label webhooks"
+	@echo "make demo    Replay signed issue-label webhooks for all configured findings"
 	@echo "make test    Run the focused test suite in Docker"
 	@echo "make policy  Sync the Playbook and Knowledge note to Devin"
-	@echo "make seed    Create the two real issues in the Superset fork"
+	@echo "make seed    Create all configured findings as issues in the Superset fork"
 	@echo "make preflight  Read-only readiness check before spending ACUs"
 
 up:

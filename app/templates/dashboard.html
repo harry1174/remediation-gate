@@ -54,11 +54,6 @@
     .next-gate b, .next-gate span { display: block; }
     .next-gate b { font-size: 12px; }
     .next-gate span { margin-top: 4px; color: #b9c4d2; font-size: 11.5px; line-height: 1.45; }
-    .progression { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 22px; }
-    .stage { position: relative; padding: 14px 15px; min-height: 82px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
-    .stage:not(:last-child)::after { content: "→"; position: absolute; top: 29px; right: -18px; color: #9aa5b4; font-weight: 700; }
-    .stage-label { color: var(--muted); font-size: 12px; text-transform: uppercase; }
-    .stage-value { display: block; margin-top: 6px; font-size: 27px; font-weight: 700; }
     .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
     .stat { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 16px; min-height: 108px; }
     .stat-label { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
@@ -90,22 +85,26 @@
     .links { display: flex; flex-wrap: wrap; gap: 6px; }
     .links a { padding: 3px 7px; border: 1px solid #cbd7e6; border-radius: 4px; background: #f8fafd; font-size: 11.5px; }
     .empty { padding: 26px; color: var(--muted); }
-    .sankey { width: 100%; height: auto; display: block; }
-    .sankey text.owner { font: 700 10px Inter, system-ui, sans-serif; fill: var(--muted); letter-spacing: .08em; }
-    .sankey text.node { font: 600 11.5px Inter, system-ui, sans-serif; fill: var(--ink); }
-    .sankey .lane { fill: #f2f5f9; }
-    .sankey .lane.agent { fill: #eef4f1; }
-    .sankey text { font: 12px Inter, system-ui, sans-serif; fill: var(--ink); }
-    .sankey text.count { font-weight: 700; }
-    .sankey text.cap { fill: var(--muted); font-size: 11px; }
-    .sankey .flow { opacity: .38; }
-    .seg-merged { background: var(--green); }
-    .seg-awaiting { background: #7fbfa8; }
-    .seg-handback { background: var(--indigo); }
-    .seg-failed { background: var(--red); }
-    .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--muted); }
-    .legend b { color: var(--ink); }
-    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: baseline; }
+    .flow-panel { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; }
+    .flow-scroll { padding: 12px 16px 8px; overflow-x: auto; }
+    .sankey { display: block; width: 100%; min-width: 1120px; height: auto; }
+    .sankey text.owner { font: 750 9.5px Inter, system-ui, sans-serif; fill: var(--muted); letter-spacing: .08em; }
+    .sankey text.step { font: 700 12px Inter, system-ui, sans-serif; fill: var(--ink); }
+    .sankey text.detail { font: 10px Inter, system-ui, sans-serif; fill: var(--muted); }
+    .sankey text.node { font: 650 11px Inter, system-ui, sans-serif; fill: var(--ink); }
+    .sankey .lane { fill: #f2f5f9; stroke: #dce2e9; stroke-width: 1; }
+    .sankey .lane.devin { fill: #eef0f8; stroke: #b9c0e3; stroke-width: 1.5; }
+    .sankey .lane.independent { fill: #edf8f4; stroke: #b7ddcf; }
+    .sankey .flow { opacity: .34; }
+    .sankey .node-rect { stroke: rgba(24, 33, 47, .16); stroke-width: 1; }
+    .policy-strip { display: flex; align-items: baseline; gap: 10px; padding: 10px 18px; border-bottom: 1px solid var(--rule); background: #fff9f0; color: var(--muted); font-size: 11.5px; }
+    .policy-strip strong { color: var(--amber); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+    .flow-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--rule); background: #fafbfd; }
+    .flow-note { padding: 13px 18px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .flow-note + .flow-note { border-left: 1px solid var(--rule); }
+    .flow-note strong { display: block; margin-bottom: 2px; color: var(--ink); }
+    .flow-note.devin strong { color: var(--indigo); }
+    .delivery-boundary { margin: 9px 2px 0; color: var(--muted); font-size: 11.5px; }
     .capability { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 13px 15px; border: 1px solid #cbd7e6; border-radius: var(--radius); background: #f7f9fd; color: var(--muted); font-size: 12.5px; }
     .capability strong { color: var(--indigo); white-space: nowrap; }
     .match { color: var(--green); font-weight: 700; }
@@ -117,12 +116,13 @@
     @media (max-width: 800px) {
       .hero { grid-template-columns: 1fr; }
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .progression { grid-template-columns: 1fr; gap: 8px; }
-      .stage:not(:last-child)::after { display: none; }
       .section-head { align-items: flex-start; flex-direction: column; gap: 5px; }
       .section-head .subtitle { text-align: left; }
       .panel { overflow-x: auto; }
       table { min-width: 760px; }
+      .policy-strip { align-items: flex-start; flex-direction: column; gap: 2px; }
+      .flow-notes { grid-template-columns: 1fr; }
+      .flow-note + .flow-note { border-left: 0; border-top: 1px solid var(--rule); }
     }
     @media (max-width: 480px) {
       main { width: min(100% - 20px, 1200px); padding-top: 18px; }
@@ -137,7 +137,7 @@
 <main>
   <header>
     <div>
-      <span class="eyebrow">Autonomous remediation pilot</span>
+      <span class="eyebrow">Autonomous remediation proof of concept</span>
       <h1>Remediation Gate</h1>
       <p class="subtitle" id="repo">Loading repository...</p>
     </div>
@@ -146,28 +146,45 @@
 
   <section class="hero" aria-labelledby="outcome-title">
     <div class="hero-main">
-      <p class="section-kicker">Pilot outcome</p>
-      <h2 class="hero-title" id="outcome-title">Loading pilot evidence...</h2>
+      <p class="section-kicker">Proof-of-concept outcome</p>
+      <h2 class="hero-title" id="outcome-title">Loading evaluation evidence...</h2>
       <p class="hero-summary" id="outcome-summary"></p>
-      <div class="legend" id="outcome-legend"></div>
     </div>
     <aside class="decision-card">
       <div>
-        <span class="decision-label">Leadership readout</span>
+        <span class="decision-label">Recommended decision</span>
         <strong id="decision-title">Loading decision...</strong>
         <p id="decision-summary"></p>
       </div>
       <div class="next-gate">
-        <b>Next evidence gate</b>
-        <span>20 comparable tasks · reviewer touch time · merge without rework · cost per accepted outcome</span>
+        <b>Pilot success criteria</b>
+        <span>20 comparable issues · reviewer effort · changes accepted without rework · cost per merged change</span>
       </div>
     </aside>
+  </section>
+
+  <section aria-labelledby="flow-title">
+    <div class="section-head">
+      <div><p class="section-kicker">End-to-end operating model</p><h2 id="flow-title">From identified issue to accepted change</h2></div>
+      <p class="subtitle" id="flow-scope">Loading the GitHub evaluation cohort...</p>
+    </div>
+    <div class="flow-panel">
+      <div class="policy-strip"><strong>Policy and spend checks</strong><span>Authenticated event · repository-scoped · deduplicated · session-capped</span></div>
+      <div class="flow-scroll">
+        <svg class="sankey" id="outcome-flow" role="img" aria-label="End-to-end remediation flow from identified issue through human approval, Devin and repository CI to human merge" viewBox="0 0 1460 330" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="flow-notes">
+        <div class="flow-note devin"><strong>Where Devin adds value</strong>Reproduces the issue, reasons over the repository, implements and tests the change, opens the pull request, reacts to CI and can decline unsafe work.</div>
+        <div class="flow-note"><strong>Where authority remains outside Devin</strong>A human selects work and authorizes spend; Remediation Gate limits execution; GitHub Actions verifies the change; a human decides whether it merges.</div>
+      </div>
+    </div>
+    <p class="delivery-boundary">Proof-of-concept boundary: a merged pull request is the final observed state. Production deployment remains repository-specific and is not claimed here.</p>
   </section>
 
   <section>
     <div class="section-head">
       <div><p class="section-kicker">Observed evidence</p><h2>Delivery and economics</h2></div>
-      <p class="subtitle">Measured from the live pilot. No human-effort or production-impact assumptions.</p>
+      <p class="subtitle">Measured from this live evaluation. No human-effort or production-impact assumptions.</p>
     </div>
     <div class="stats" id="stats"></div>
   </section>
@@ -197,16 +214,6 @@
 
   <section>
     <div class="section-head">
-      <div><p class="section-kicker">Operating telemetry</p><h2>How work flows, and who owns each step</h2></div>
-      <p class="subtitle">Ribbon widths are task counts. Every branch is an intended outcome: a handback is a governed decision and merging remains a human one.</p>
-    </div>
-    <div class="panel" style="padding:10px 16px 16px">
-      <svg class="sankey" id="outcome-flow" role="img" aria-label="End-to-end flow from approved issue through Devin to merged pull request" viewBox="0 0 1140 250" preserveAspectRatio="xMidYMid meet"></svg>
-    </div>
-  </section>
-
-  <section>
-    <div class="section-head">
       <div><p class="section-kicker">Evidence integrity</p><h2>Source reconciliation</h2></div>
       <p class="subtitle">Activity is reconciled across the control-plane ledger and Devin's vendor-side Metrics API.</p>
     </div>
@@ -222,7 +229,7 @@
   <section class="secondary">
     <div class="section-head">
       <div><p class="section-kicker">Illustrative business case</p><h2>Planning scenarios</h2></div>
-      <p class="subtitle">Assumption-driven sensitivity analysis, deliberately separated from observed pilot evidence.</p>
+      <p class="subtitle">Assumption-driven sensitivity analysis, deliberately separated from observed proof-of-concept evidence.</p>
     </div>
     <div class="panel">
       <p class="scenario-note">These figures show what would need to be true; they are not realised savings or measured capacity returned.</p>
@@ -259,119 +266,189 @@
     return node;
   };
 
-  // Sankey over the whole deployment chain, with an ownership band above it.
-  // The point for leadership is not the counts — it is which columns a human
-  // touches and which Devin carries alone. Hand-written SVG so the page stays
-  // one self-contained file with no external requests.
+  // A measured flow with an ownership band above it. Counts belong in the
+  // ribbons; responsibility and value creation belong in the stage labels.
+  // Hand-written SVG keeps the live dashboard self-contained.
   function drawSankey(cols, owners) {
     const svg = document.getElementById('outcome-flow');
     svg.replaceChildren();
+    const title = svgEl('title');
+    title.textContent = 'Observed remediation flow from identified issue to human merge';
+    const description = svgEl('desc');
+    description.textContent = 'Ribbon widths represent issues in the evaluation cohort. Ownership bands distinguish issue identification, human authorization, Devin autonomous engineering, independent repository CI, and human merge authority.';
+    svg.append(title, description);
+
     const total = cols[0].nodes.reduce((s, n) => s + n.n, 0);
-    if (!total) return;
+    if (!total) {
+      const empty = svgEl('text', {x: 730, y: 170, 'text-anchor': 'middle', class: 'node'});
+      empty.textContent = 'No remediation issue contracts found';
+      svg.append(empty);
+      return;
+    }
 
-    const W = 1140, H = 250, NODE = 12, TOP = 76, BOT = 22, GAP = 14;
-    const unit = (H - TOP - BOT - GAP * 2) / total;
-    const step = (W - 150) / (cols.length - 1);
-    const x = i => 60 + i * step;
+    const W = 1460, H = 330, NODE = 13, TOP = 132, BOT = 22, GAP = 16;
+    const maxNodes = Math.max(...cols.map(col => col.nodes.filter(n => n.n > 0).length));
+    const available = H - TOP - BOT;
+    const unit = (available - GAP * Math.max(maxNodes - 1, 0)) / total;
+    const step = (W - 170) / (cols.length - 1);
+    const x = i => 70 + i * step;
 
-    // Ownership lanes across the top: who is accountable for each column.
+    // Accountability is explicit. The Devin band is intentionally the widest:
+    // it owns the ambiguous engineering work, not authorization or acceptance.
     owners.forEach(o => {
-      const x0 = x(o.from) - 26, x1 = x(o.to) + NODE + 26;
-      svg.append(svgEl('rect', {x: x0, y: 16, width: x1 - x0, height: 26, rx: 5,
-                                class: 'lane' + (o.agent ? ' agent' : '')}));
-      const label = svgEl('text', {x: (x0 + x1) / 2, y: 33, 'text-anchor': 'middle',
+      const x0 = x(o.from) - 34, x1 = x(o.to) + NODE + 34;
+      svg.append(svgEl('rect', {x: x0, y: 12, width: x1 - x0, height: 26, rx: 5,
+                                class: `lane ${o.kind || ''}`}));
+      const label = svgEl('text', {x: (x0 + x1) / 2, y: 29, 'text-anchor': 'middle',
                                    class: 'owner'});
       label.textContent = o.label.toUpperCase();
       svg.append(label);
     });
 
+    cols.forEach((col, ci) => {
+      const title = svgEl('text', {x: x(ci) + NODE / 2, y: 67,
+                                    'text-anchor': 'middle', class: 'step'});
+      title.textContent = col.title;
+      svg.append(title);
+      const detail = svgEl('text', {x: x(ci) + NODE / 2, y: 85,
+                                     'text-anchor': 'middle', class: 'detail'});
+      detail.textContent = col.detail;
+      svg.append(detail);
+    });
+
+    // Calculate all node geometry before drawing. Ribbons are painted first so
+    // they cannot obscure node borders or labels.
     const placed = [];
     cols.forEach((col, ci) => {
-      let y = TOP;
+      const visible = col.nodes.filter(n => n.n > 0);
+      const usedHeight = visible.reduce((sum, node) => sum + node.n * unit, 0)
+        + GAP * Math.max(visible.length - 1, 0);
+      let y = TOP + Math.max((available - usedHeight) / 2, 0);
       const here = {};
-      col.nodes.filter(n => n.n > 0).forEach(node => {
+      visible.forEach(node => {
         const h = Math.max(node.n * unit, 4);
-        svg.append(svgEl('rect', {x: x(ci), y, width: NODE, height: h, rx: 3,
-                                  fill: node.colour}));
-        const caption = svgEl('text', {x: x(ci) + NODE / 2, y: y - 8,
-                                       'text-anchor': 'middle', class: 'node'});
-        caption.textContent = `${node.n} ${node.label}`;
-        svg.append(caption);
-        here[node.key] = {y, h, used: 0, colour: node.colour};
-
-        // Ribbon back to whichever node in the previous column fed this one.
-        if (ci > 0) {
-          const parent = placed[ci - 1][node.from] || Object.values(placed[ci - 1])[0];
-          if (parent) {
-            const py = parent.y + parent.used;
-            const x0 = x(ci - 1) + NODE, x1 = x(ci), mid = (x0 + x1) / 2;
-            svg.append(svgEl('path', {
-              d: `M${x0},${py} C${mid},${py} ${mid},${y} ${x1},${y} `
-                 + `L${x1},${y + h} C${mid},${y + h} ${mid},${py + h} ${x0},${py + h} Z`,
-              fill: node.colour, class: 'flow'}));
-            parent.used += h;
-          }
-        }
+        here[node.key] = {...node, y, h, used: 0};
         y += h + GAP;
       });
       placed.push(here);
     });
+
+    const ribbons = svgEl('g', {});
+    cols.forEach((col, ci) => {
+      if (ci === 0) return;
+      col.nodes.filter(n => n.n > 0).forEach(node => {
+        const child = placed[ci][node.key];
+        const parent = placed[ci - 1][node.from] || Object.values(placed[ci - 1])[0];
+        if (!child || !parent) return;
+        const py = parent.y + parent.used;
+        const x0 = x(ci - 1) + NODE, x1 = x(ci), mid = (x0 + x1) / 2;
+        ribbons.append(svgEl('path', {
+          d: `M${x0},${py} C${mid},${py} ${mid},${child.y} ${x1},${child.y} `
+             + `L${x1},${child.y + child.h} C${mid},${child.y + child.h} `
+             + `${mid},${py + child.h} ${x0},${py + child.h} Z`,
+          fill: node.colour, class: 'flow'}));
+        parent.used += child.h;
+      });
+    });
+    svg.append(ribbons);
+
+    placed.forEach((col, ci) => Object.values(col).forEach(node => {
+      svg.append(svgEl('rect', {x: x(ci), y: node.y, width: NODE, height: node.h,
+                                rx: 3, fill: node.colour, class: 'node-rect'}));
+      const caption = svgEl('text', {x: x(ci) + NODE / 2, y: node.y - 8,
+                                     'text-anchor': 'middle', class: 'node'});
+      caption.textContent = `${node.n} ${node.label}`;
+      svg.append(caption);
+    }));
   }
 
-  function renderOutcomes(headline) {
+  function renderOutcomes(data, cohort) {
+    const headline = data.headline;
+    const triggered = data.funnel.find(row => row.stage === 'triggered')?.count || 0;
+    const cohortIsConsistent = cohort && cohort.available
+      && cohort.identified >= cohort.approved
+      && cohort.approved >= headline.sessions_started;
+    const identified = cohortIsConsistent ? cohort.identified : triggered;
+    const approved = cohortIsConsistent ? cohort.approved : triggered;
+    const awaitingApproval = cohortIsConsistent ? cohort.awaiting_approval : 0;
+    const flowScope = document.getElementById('flow-scope');
+    flowScope.textContent = cohortIsConsistent
+      ? `Evaluation issue cohort · all time · ${identified} GitHub issues with a complete remediation contract; ribbon widths are issue counts.`
+      : 'Evaluation execution cohort · control-plane ledger; GitHub issue-cohort data is currently unavailable.';
     const awaitingN = headline.verified_prs - headline.merged_prs;
-    document.getElementById('outcome-title').textContent =
-      `${headline.verified_prs} CI-verified fixes from ${headline.resolved} completed tasks`;
-    document.getElementById('outcome-summary').textContent =
-      `${headline.merged_prs} merged · ${awaitingN} awaiting human merge · `
-      + `${headline.handed_back} governed handback · ${headline.failures} failed`;
+    const issueWord = headline.resolved === 1 ? 'issue' : 'issues';
+    const outcomeParts = [
+      `${headline.verified_prs} verified ${headline.verified_prs === 1 ? 'fix' : 'fixes'}`,
+    ];
+    if (headline.handed_back > 0) {
+      outcomeParts.push(`${headline.handed_back} safe ${headline.handed_back === 1 ? 'handback' : 'handbacks'}`);
+    }
+    if (headline.failures > 0) {
+      outcomeParts.push(`${headline.failures} ${headline.failures === 1 ? 'failure' : 'failures'}`);
+    }
+    document.getElementById('outcome-title').textContent = headline.active > 0
+      ? `Devin is working through ${approved} approved evaluation ${approved === 1 ? 'issue' : 'issues'}`
+      : headline.resolved > 0
+        ? `Devin handled ${headline.resolved} approved ${issueWord}: ${outcomeParts.join(', ')}`
+        : 'No approved evaluation work has completed yet';
+    const adoptionParts = [];
+    if (headline.merged_prs > 0) {
+      adoptionParts.push(`${headline.merged_prs} ${headline.merged_prs === 1 ? 'fix is' : 'fixes are'} merged`);
+    }
+    if (awaitingN > 0) {
+      adoptionParts.push(`${awaitingN} ${awaitingN === 1 ? 'awaits' : 'await'} human review`);
+    }
+    if (headline.active > 0) {
+      adoptionParts.push(`${headline.active} ${headline.active === 1 ? 'session is' : 'sessions are'} still running`);
+    } else if (headline.failures === 0 && headline.resolved > 0) {
+      adoptionParts.push('no failed runs');
+    }
+    document.getElementById('outcome-summary').textContent = adoptionParts.join(' · ');
 
-    // The full chain, not just the outcome split: a human approves, Devin
-    // carries the middle alone, the repository's CI adjudicates, a human
-    // decides whether it lands. The ownership band is the argument.
-    const C = {approve: '#8f9bb0', agent: '#168466', hand: '#4a57a8',
-               bad: '#b33a3a', wait: '#7fbfa8'};
+    const held = Math.max(approved - headline.sessions_started, 0);
+    const inProgress = Math.max(
+      headline.sessions_started - headline.agent_claimed_prs
+        - headline.handed_back - headline.failures,
+      0,
+    );
+    const awaitingCI = Math.max(headline.agent_claimed_prs - headline.ci_adjudicated, 0);
     const contradicted = headline.terminal_ci_contradictions;
+    const C = {input: '#8f9bb0', devin: '#4a57a8',
+               hand: '#b56b18', good: '#168466', bad: '#b33a3a', wait: '#7fbfa8'};
     drawSankey([
-      {nodes: [{key: 'approved', label: 'approved', n: headline.resolved, colour: C.approve}]},
-      {nodes: [{key: 'session', label: 'Devin sessions', n: headline.sessions_started, colour: C.approve, from: 'approved'}]},
-      {nodes: [
-        {key: 'proposed', label: 'fixes proposed', n: headline.agent_claimed_prs, colour: C.agent, from: 'session'},
-        {key: 'handback', label: 'governed handback', n: headline.handed_back, colour: C.hand, from: 'session'},
+      {title: 'Issue cohort', detail: 'Complete remediation contract', nodes: [
+        {key: 'issue', label: 'identified issues', n: identified, colour: C.input},
+      ]},
+      {title: 'Human approval', detail: 'devin:autofix authorizes spend', nodes: [
+        {key: 'approved', label: 'approved for Devin', n: approved, colour: C.input, from: 'issue'},
+        {key: 'waiting', label: 'awaiting approval', n: awaitingApproval, colour: C.hand, from: 'issue'},
+      ]},
+      {title: 'Devin session', detail: 'Playbook + repository Knowledge', nodes: [
+        {key: 'session', label: 'autonomous sessions', n: headline.sessions_started, colour: C.devin, from: 'approved'},
+        {key: 'held', label: 'not dispatched', n: held, colour: C.hand, from: 'approved'},
+      ]},
+      {title: 'Agent outcome', detail: 'Reason · edit · test · PR · repair', nodes: [
+        {key: 'proposed', label: 'PRs claimed ready', n: headline.agent_claimed_prs, colour: C.devin, from: 'session'},
+        {key: 'handback', label: 'safe handback', n: headline.handed_back, colour: C.hand, from: 'session'},
         {key: 'failed', label: 'failed', n: headline.failures, colour: C.bad, from: 'session'},
+        {key: 'active', label: 'in progress', n: inProgress, colour: C.wait, from: 'session'},
       ]},
-      {nodes: [
-        {key: 'confirmed', label: 'CI confirmed', n: headline.verified_prs, colour: C.agent, from: 'proposed'},
+      {title: 'Independent gate', detail: 'Typed verdict + GitHub Actions', nodes: [
+        {key: 'confirmed', label: 'CI confirmed', n: headline.verified_prs, colour: C.good, from: 'proposed'},
         {key: 'rejected', label: 'CI rejected', n: contradicted, colour: C.bad, from: 'proposed'},
+        {key: 'pending', label: 'awaiting CI', n: awaitingCI, colour: C.wait, from: 'proposed'},
       ]},
-      {nodes: [
-        {key: 'merged', label: 'merged', n: headline.merged_prs, colour: C.agent, from: 'confirmed'},
+      {title: 'Human adoption', detail: 'Merge authority stays human', nodes: [
+        {key: 'merged', label: 'merged', n: headline.merged_prs, colour: C.good, from: 'confirmed'},
         {key: 'awaiting', label: 'awaiting merge', n: awaitingN, colour: C.wait, from: 'confirmed'},
       ]},
     ], [
-      {from: 0, to: 0, label: 'Human approves'},
-      {from: 1, to: 2, label: 'Devin investigates, implements, decides', agent: true},
-      {from: 3, to: 3, label: 'Repository CI adjudicates'},
-      {from: 4, to: 4, label: 'Human merges'},
+      {from: 0, to: 0, label: 'Engineering identifies'},
+      {from: 1, to: 1, label: 'Human authorizes'},
+      {from: 2, to: 3, label: 'Devin autonomous engineering', kind: 'devin'},
+      {from: 4, to: 4, label: 'Repository CI verifies', kind: 'independent'},
+      {from: 5, to: 5, label: 'Human adopts'},
     ]);
-
-    const segs = [
-      ['seg-merged', headline.merged_prs, 'Merged'],
-      ['seg-awaiting', awaitingN, 'Awaiting merge'],
-      ['seg-handback', headline.handed_back, 'Governed handback'],
-      ['seg-failed', headline.failures, 'Failed'],
-    ].filter(s => s[1] > 0);
-    const legend = document.getElementById('outcome-legend');
-    legend.replaceChildren();
-    segs.forEach(([cls, n, label]) => {
-      const item = document.createElement('span');
-      const swatch = document.createElement('i');
-      swatch.className = 'dot ' + cls;
-      item.append(swatch);
-      item.append(text('b', `${n} `));
-      item.append(text('span', label));
-      legend.append(item);
-    });
   }
 
   function renderDecision(data) {
@@ -379,20 +456,23 @@
     const title = document.getElementById('decision-title');
     const summary = document.getElementById('decision-summary');
     if (data.mode !== 'live') {
-      title.textContent = 'Simulation evidence only';
-      summary.textContent = 'Use a live Devin run before making a pilot decision.';
+      title.textContent = 'Live evidence is still required';
+      summary.textContent = 'Use a live Devin run before deciding whether to begin a controlled pilot.';
     } else if (headline.active > 0) {
-      title.textContent = 'Pilot currently in progress';
-      summary.textContent = `${headline.active} session${headline.active === 1 ? '' : 's'} active. Reassess once repository CI has adjudicated the work.`;
+      title.textContent = 'Let the current evaluation finish';
+      summary.textContent = `${headline.active} ${headline.active === 1 ? 'session is' : 'sessions are'} still active. Reassess after repository CI has completed its checks.`;
     } else if (headline.failures > 0) {
-      title.textContent = 'Investigate before expanding';
-      summary.textContent = `${headline.failures} task${headline.failures === 1 ? '' : 's'} failed. Review the task evidence before extending the pilot.`;
+      title.textContent = 'Pause expansion and review the failures';
+      summary.textContent = `${headline.failures} ${headline.failures === 1 ? 'run needs' : 'runs need'} investigation. Resolve the failure pattern before authorizing a larger cohort.`;
     } else if (headline.verified_prs > 0) {
-      title.textContent = 'Technical viability demonstrated';
-      summary.textContent = `Extend the pilot. Production ROI is not yet proven from ${headline.resolved} completed tasks.`;
+      title.textContent = 'Proceed to a controlled pilot';
+      const handbackEvidence = headline.handed_back > 0
+        ? `${headline.handed_back} ${headline.handed_back === 1 ? 'issue was' : 'issues were'} safely handed back rather than forcing a weak change.`
+        : 'No issue required a handback.';
+      summary.textContent = `The proof of concept established end-to-end feasibility: ${headline.verified_prs} ${headline.verified_prs === 1 ? 'change has' : 'changes have'} passed repository CI. ${handbackEvidence} Test 20 comparable issues before judging repeatability or ROI.`;
     } else {
-      title.textContent = 'No completed evidence yet';
-      summary.textContent = 'Run policy-approved tasks before making a pilot decision.';
+      title.textContent = 'Evidence is not ready';
+      summary.textContent = 'Complete a controlled evaluation set before deciding whether to begin a pilot.';
     }
   }
 
@@ -405,7 +485,7 @@
       `repository checks passed · ${headline.handed_back} governed handback · ${headline.failures} failed`);
     addStat(root, 'Trigger to CI-verified', headline.median_minutes_to_verified == null ? '—' : `${headline.median_minutes_to_verified}m`,
       headline.median_minutes_to_agent_pr == null ? 'median' : `median across ${headline.verified_prs} fixes · agent claimed at ${headline.median_minutes_to_agent_pr}m`);
-    addStat(root, 'Observed pilot spend', headline.total_execution_cost_usd == null ? '—' : `$${headline.total_execution_cost_usd}`,
+    addStat(root, 'Observed evaluation spend', headline.total_execution_cost_usd == null ? '—' : `$${headline.total_execution_cost_usd}`,
       headline.cost_per_verified_pr_usd == null ? 'cost per verified output unavailable' : `$${headline.cost_per_verified_pr_usd} per CI-verified PR · every attempt included`);
     addStat(root, 'Merged', `${headline.merged_prs}`, `${headline.verified_prs - headline.merged_prs} verified and awaiting a human decision`);
 
@@ -463,7 +543,7 @@
       return;
     }
     scope.textContent = c.scoped_to_playbook
-      ? 'Scoped to this remediation Playbook and the pilot reporting window.'
+      ? 'Scoped to this remediation Playbook and the evaluation reporting window.'
       : 'Warning: Devin figures are organization-wide rather than scoped to this Playbook.';
     const rows = [
       ['Sessions created with this Playbook', headline.sessions_started, c.api_sessions],
@@ -558,18 +638,24 @@
 
   async function refresh() {
     try {
-      const response = await fetch('/api/metrics');
+      const [response, cohort] = await Promise.all([
+        fetch('/api/metrics'),
+        fetch('/api/issue-cohort')
+          .then(result => result.ok ? result.json() : ({available: false}))
+          .catch(() => ({available: false})),
+      ]);
+      if (!response.ok) throw new Error(`metrics request failed: ${response.status}`);
       const data = await response.json();
       const w = data.window;
       const span = w && w.from ? `${new Date(w.from * 1000).toLocaleDateString()} – ${new Date(w.to * 1000).toLocaleDateString()}` : 'no activity';
       document.getElementById('repo').textContent =
-        `${data.repo} · pilot window ${span} · ${data.headline.active} active, `
+        `${data.repo} · evaluation window ${span} · ${data.headline.active} active, `
         + `${data.headline.resolved} completed · refreshed ${new Date(data.generated_at * 1000).toLocaleTimeString()}`;
       const mode = document.getElementById('mode');
       mode.textContent = data.mode === 'live' ? 'Live · Devin API' : 'Demo · no ACUs spent';
       mode.className = `mode ${data.mode}`;
       renderDecision(data);
-      renderOutcomes(data.headline);
+      renderOutcomes(data, cohort);
       renderStats(data.headline);
       renderModeled(data.modeled, data.headline.merged_prs);
       renderCorroboration(data.headline);

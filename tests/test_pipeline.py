@@ -102,6 +102,31 @@ def test_duplicate_issue_never_creates_two_tasks(tmp_path):
     assert len(app.state.store.all_tasks()) == 1
 
 
+def test_issue_cohort_endpoint_is_cached(tmp_path):
+    app = create_app(_settings(tmp_path))
+    calls = 0
+
+    def cohort(approved_history):
+        nonlocal calls
+        calls += 1
+        assert approved_history == set()
+        return {
+            "available": True,
+            "identified": 6,
+            "approved": 4,
+            "awaiting_approval": 2,
+        }
+
+    app.state.orchestrator.github.pilot_issue_cohort = cohort
+    with TestClient(app) as client:
+        first = client.get("/api/issue-cohort")
+        second = client.get("/api/issue-cohort")
+
+    assert first.json()["identified"] == 6
+    assert second.json()["approved"] == 4
+    assert calls == 1
+
+
 def test_every_seeded_issue_class_is_recognised():
     """A class label the classifier does not know falls through to `quality`,
     so the dashboard would contradict the label on the issue itself."""
@@ -113,7 +138,17 @@ def test_every_seeded_issue_class_is_recognised():
     findings = json.loads(
         (Path(__file__).resolve().parents[1] / "issues" / "findings.json").read_text()
     )
+    assert len(findings) == 6
+    assert len({finding["title"] for finding in findings}) == len(findings)
+    required_sections = {
+        "## Observed problem",
+        "## Scope",
+        "## Acceptance criteria",
+        "## Verification",
+        "## Non-goals",
+    }
     for finding in findings:
+        assert all(section in finding["body"] for section in required_sections)
         issue = {
             "labels": [{"name": finding["class"]}, {"name": finding["severity"]}]
         }
@@ -497,6 +532,96 @@ def test_only_repository_ci_can_satisfy_the_gate(tmp_path):
     # The failing Devin check is ignored; the gate reflects repository CI only.
     assert result["conclusion"] == "success"
     assert result["failing"] == []
+
+
+def test_pilot_issue_cohort_separates_contract_from_approval(tmp_path):
+    settings = _settings(
+        tmp_path,
+        demo_mode=False,
+        devin_api_key="k",
+        devin_org_id="o",
+        github_token="t",
+    )
+    client = GitHubClient(settings)
+    contract = "\n".join(
+        (
+            "## Observed problem",
+            "A reproducible defect.",
+            "## Scope",
+            "One module.",
+            "## Acceptance criteria",
+            "The defect is fixed.",
+            "## Verification",
+            "Run pytest.",
+            "## Non-goals",
+            "No redesign.",
+        )
+    )
+    payload = [
+        {
+            "number": 1,
+            "title": "Merged remediation",
+            "body": contract,
+            "html_url": "https://github.com/harry1174/superset/issues/1",
+            "state": "closed",
+            "labels": [{"name": "devin:autofix"}],
+        },
+        {
+            "number": 2,
+            "title": "Approved remediation",
+            "body": contract,
+            "html_url": "https://github.com/harry1174/superset/issues/2",
+            "state": "open",
+            "labels": [{"name": "devin:autofix"}],
+        },
+        {
+            "number": 3,
+            "title": "Awaiting approval",
+            "body": contract,
+            "html_url": "https://github.com/harry1174/superset/issues/3",
+            "state": "open",
+            "labels": [],
+        },
+        {
+            "number": 4,
+            "title": "Ordinary issue",
+            "body": "No remediation contract",
+            "html_url": "https://github.com/harry1174/superset/issues/4",
+            "state": "open",
+            "labels": [],
+        },
+        {
+            "number": 5,
+            "title": "Pull request returned by the issues endpoint",
+            "body": contract,
+            "html_url": "https://github.com/harry1174/superset/pull/5",
+            "state": "open",
+            "labels": [{"name": "devin:autofix"}],
+            "pull_request": {"url": "https://api.github.com/pulls/5"},
+        },
+    ]
+
+    class _Resp:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return payload
+
+    client._http.get = lambda *args, **kwargs: _Resp()  # type: ignore[method-assign]
+    result = client.pilot_issue_cohort()
+
+    assert result["available"] is True
+    assert result["identified"] == 3
+    assert result["approved"] == 2
+    assert result["awaiting_approval"] == 1
+    assert result["open"] == 2
+    assert result["open_awaiting_approval"] == 1
+    assert [issue["number"] for issue in result["issues"]] == [1, 2, 3]
+
+    historical = client.pilot_issue_cohort({3})
+    assert historical["approved"] == 3
+    assert historical["awaiting_approval"] == 0
 
 
 def test_session_records_the_mode_it_ran_in(tmp_path):

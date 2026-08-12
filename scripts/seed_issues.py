@@ -19,6 +19,7 @@ LABELS = {
     "devin:needs-human": "B33A3A",
     "hardening": "5B6478",
     "reliability": "B56B18",
+    "quality": "5B6478",
     "medium": "E3A21A",
     "low": "C5D1DE",
 }

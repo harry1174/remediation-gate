@@ -1,0 +1,169 @@
+<svg viewBox="0 0 1180 810" width="1180" height="810" xmlns="http://www.w3.org/2000/svg" role="img" font-family="ui-sans-serif, -apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+<title>Remediation Gate architecture</title>
+<desc>A four-column diagram. A person approves an issue with a label, which is the only thing that starts work. The Remediation Gate records the job, applies budget limits, sends it to Devin, and checks what comes back. Devin does the engineering under a written procedure and reports what it did. The repository's own CI then confirms or contradicts that report before anything is counted as verified. Anything unresolved is handed back to a person, and a human still reviews and merges.</desc>
+
+<style>
+  svg { --surface-0:#ffffff; --surface-1:#f7f7f5; --text-primary:#1a1a19;
+        --text-secondary:#57564f; --text-muted:#83827b; --border:#dedcd5;
+        --border-strong:#c9c7bf; --border-stronger:#aeaca3; --text-accent:#c15f3c; }
+  @media (prefers-color-scheme: dark) {
+    svg { --surface-0:#1a1a19; --surface-1:#232320; --text-primary:#f2f1ec;
+          --text-secondary:#b5b3a9; --text-muted:#8d8b82; --border:#3a3a35;
+          --border-strong:#4b4a44; --border-stronger:#66655d; --text-accent:#e08a63; }
+  }
+</style>
+
+<rect x="0" y="0" width="1180" height="810" fill="var(--surface-0, #ffffff)"/>
+
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+<path d="M0,1 L9,5 L0,9 z" fill="var(--text-muted, #83827b)"/>
+</marker>
+<marker id="arA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+<path d="M0,1 L9,5 L0,9 z" fill="var(--text-accent, #c15f3c)"/>
+</marker>
+</defs>
+
+<!-- zones -->
+<rect x="24" y="56" width="220" height="704" rx="10" fill="none" stroke="var(--border, #dedcd5)" stroke-dasharray="4 4"/>
+<rect x="268" y="56" width="420" height="704" rx="10" fill="none" stroke="var(--border, #dedcd5)" stroke-dasharray="4 4"/>
+<rect x="712" y="56" width="220" height="504" rx="10" fill="none" stroke="var(--border, #dedcd5)" stroke-dasharray="4 4"/>
+<rect x="956" y="520" width="200" height="240" rx="10" fill="none" stroke="var(--text-accent, #c15f3c)" stroke-dasharray="4 4" opacity="0.55"/>
+
+<g font-size="9.5" letter-spacing="0.09em" fill="var(--text-secondary, #57564f)" font-weight="600">
+<text x="44" y="80">GITHUB · WHERE PEOPLE DECIDE</text>
+<text x="290" y="80">REMEDIATION GATE · NEVER WRITES CODE</text>
+<text x="732" y="80">DEVIN · THE AI ENGINEER</text>
+<text x="974" y="544" fill="var(--text-accent, #c15f3c)">REPOSITORY CI · INDEPENDENT</text>
+</g>
+
+<!-- arrows: neutral -->
+<g fill="none" stroke="var(--text-muted, #83827b)" stroke-width="1.4" marker-end="url(#ar)">
+<path d="M134 164 V 190"/>
+<path d="M228 228 H 284"/>
+<path d="M478 260 V 286"/>
+<path d="M478 354 V 380"/>
+<path d="M478 448 V 474"/>
+<path d="M478 542 V 568"/>
+<path d="M478 636 V 662"/>
+<path d="M670 416 H 726"/>
+<path d="M822 164 V 380"/>
+<path d="M822 448 V 474"/>
+<path d="M728 510 H 672"/>
+<path d="M248 510 V 578 H 234"/>
+</g>
+<g fill="none" stroke="var(--text-muted, #83827b)" stroke-width="1.4">
+<path d="M286 510 H 248"/>
+<path d="M286 584 H 248"/>
+</g>
+<path d="M286 624 H 266 V 692 H 234" fill="none" stroke="var(--text-muted, #83827b)" stroke-width="1.4" marker-end="url(#ar)" marker-start="url(#ar)"/>
+
+<!-- arrows: independent verification path -->
+<g fill="none" stroke="var(--text-accent, #c15f3c)" stroke-width="1.6" marker-end="url(#arA)">
+<path d="M670 584 H 970"/>
+<path d="M970 624 H 670"/>
+</g>
+
+<!-- edge labels -->
+<g font-size="9.5" fill="var(--text-muted, #83827b)">
+<text x="256" y="222" text-anchor="middle">approved</text>
+<text x="698" y="410" text-anchor="middle">starts work</text>
+<text x="700" y="504" text-anchor="middle">reports back</text>
+<text x="832" y="266">used on</text>
+<text x="832" y="279">every run</text>
+<text x="820" y="576" text-anchor="middle" fill="var(--text-accent, #c15f3c)">checks the exact code it pushed</text>
+<text x="820" y="644" text-anchor="middle" fill="var(--text-accent, #c15f3c)">confirms it, or contradicts it</text>
+<text x="700" y="686">a failing build is given time to be fixed;</text>
+<text x="700" y="700">a new commit restarts the clock</text>
+</g>
+
+<!-- GitHub boxes -->
+<g>
+<rect x="44" y="100" width="180" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--border-strong, #c9c7bf)"/>
+<text x="58" y="127" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">Clearly scoped issue</text>
+<text x="58" y="145" font-size="10" fill="var(--text-muted, #83827b)">what to fix, how to prove it</text>
+
+<rect x="44" y="196" width="180" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--border-strong, #c9c7bf)"/>
+<text x="58" y="223" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">A person approves it</text>
+<text x="58" y="241" font-size="10" fill="var(--text-muted, #83827b)">nothing starts without this</text>
+
+<rect x="44" y="560" width="180" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--border-strong, #c9c7bf)"/>
+<text x="58" y="587" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">Handed back to a person</text>
+<text x="58" y="605" font-size="10" fill="var(--text-muted, #83827b)">with the reason it stopped</text>
+
+<rect x="44" y="660" width="180" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--border-strong, #c9c7bf)"/>
+<text x="58" y="687" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">Reviewed and merged</text>
+<text x="58" y="705" font-size="10" fill="var(--text-muted, #83827b)">people control both ends</text>
+</g>
+
+<!-- Gate boxes -->
+<g>
+<rect x="290" y="196" width="376" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--border-strong, #c9c7bf)"/>
+<text x="306" y="223" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">Receives the approval</text>
+<text x="306" y="241" font-size="10" fill="var(--text-muted, #83827b)">signature verified · one repository only</text>
+
+<rect x="290" y="290" width="376" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--border-strong, #c9c7bf)"/>
+<text x="306" y="317" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">Records the job</text>
+<text x="306" y="335" font-size="10" fill="var(--text-muted, #83827b)">one job per issue — a repeat approval doesn't start a second</text>
+
+<rect x="290" y="384" width="376" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--border-strong, #c9c7bf)"/>
+<text x="306" y="411" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">Applies the budget</text>
+<text x="306" y="429" font-size="10" fill="var(--text-muted, #83827b)">limits checked before anything is spent, not after</text>
+
+<rect x="290" y="478" width="376" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--border-strong, #c9c7bf)"/>
+<text x="306" y="505" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">Checks what came back</text>
+<text x="306" y="523" font-size="10" fill="var(--text-muted, #83827b)">a link to a pull request is not enough</text>
+
+<rect x="290" y="572" width="376" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--text-accent, #c15f3c)" stroke-width="1.4"/>
+<text x="306" y="599" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">Waits for independent proof</text>
+<text x="306" y="617" font-size="10" fill="var(--text-muted, #83827b)">the agent's own word does not count as verification</text>
+
+<rect x="290" y="666" width="376" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--border-strong, #c9c7bf)"/>
+<text x="306" y="693" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">Reporting</text>
+<text x="306" y="711" font-size="10" fill="var(--text-muted, #83827b)">what was measured, kept apart from what was estimated</text>
+</g>
+
+<!-- Devin boxes -->
+<g>
+<rect x="732" y="100" width="180" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--border-strong, #c9c7bf)"/>
+<text x="746" y="127" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">The rules it follows</text>
+<text x="746" y="145" font-size="10" fill="var(--text-muted, #83827b)">a document, not a code change</text>
+
+<rect x="732" y="384" width="180" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--border-strong, #c9c7bf)"/>
+<text x="746" y="411" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">Does the engineering</text>
+<text x="746" y="429" font-size="10" fill="var(--text-muted, #83827b)">fixes it, tests it, opens a PR</text>
+
+<rect x="732" y="478" width="180" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--border-strong, #c9c7bf)"/>
+<text x="746" y="505" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">Reports what it did</text>
+<text x="746" y="523" font-size="10" fill="var(--text-muted, #83827b)">or why it declined to</text>
+</g>
+
+<!-- CI box -->
+<g>
+<rect x="974" y="572" width="164" height="64" rx="8" fill="var(--surface-1, #f7f7f5)" stroke="var(--text-accent, #c15f3c)" stroke-width="1.4"/>
+<text x="988" y="599" font-size="12.5" font-weight="600" fill="var(--text-primary, #1a1a19)">The project's own CI</text>
+<text x="988" y="617" font-size="10" fill="var(--text-muted, #83827b)">runs the issue's own tests</text>
+<text x="974" y="668" font-size="9.5" fill="var(--text-muted, #83827b)">no other checks run here,</text>
+<text x="974" y="682" font-size="9.5" fill="var(--text-muted, #83827b)">so the answer is either</text>
+<text x="974" y="696" font-size="9.5" fill="var(--text-muted, #83827b)">a pass or a fail</text>
+</g>
+
+<!-- decision badges -->
+<g font-size="9.5" font-weight="600" text-anchor="middle">
+<g><circle cx="56" cy="196" r="8.5" fill="var(--surface-0, #ffffff)" stroke="var(--border-stronger, #aeaca3)"/><text x="56" y="199.5" fill="var(--text-secondary, #57564f)">1</text></g>
+<g><circle cx="302" cy="196" r="8.5" fill="var(--surface-0, #ffffff)" stroke="var(--border-stronger, #aeaca3)"/><text x="302" y="199.5" fill="var(--text-secondary, #57564f)">2</text></g>
+<g><circle cx="302" cy="290" r="8.5" fill="var(--surface-0, #ffffff)" stroke="var(--border-stronger, #aeaca3)"/><text x="302" y="293.5" fill="var(--text-secondary, #57564f)">3</text></g>
+<g><circle cx="302" cy="384" r="8.5" fill="var(--surface-0, #ffffff)" stroke="var(--border-stronger, #aeaca3)"/><text x="302" y="387.5" fill="var(--text-secondary, #57564f)">4</text></g>
+<g><circle cx="744" cy="100" r="8.5" fill="var(--surface-0, #ffffff)" stroke="var(--border-stronger, #aeaca3)"/><text x="744" y="103.5" fill="var(--text-secondary, #57564f)">5</text></g>
+<g><circle cx="302" cy="478" r="8.5" fill="var(--surface-0, #ffffff)" stroke="var(--border-stronger, #aeaca3)"/><text x="302" y="481.5" fill="var(--text-secondary, #57564f)">6</text></g>
+<g><circle cx="302" cy="572" r="8.5" fill="var(--surface-0, #ffffff)" stroke="var(--text-accent, #c15f3c)"/><text x="302" y="575.5" fill="var(--text-accent, #c15f3c)">7</text></g>
+<g><circle cx="986" cy="572" r="8.5" fill="var(--surface-0, #ffffff)" stroke="var(--text-accent, #c15f3c)"/><text x="986" y="575.5" fill="var(--text-accent, #c15f3c)">8</text></g>
+<g><circle cx="302" cy="666" r="8.5" fill="var(--surface-0, #ffffff)" stroke="var(--border-stronger, #aeaca3)"/><text x="302" y="669.5" fill="var(--text-secondary, #57564f)">9</text></g>
+</g>
+
+<!-- legend -->
+<g font-size="10">
+<line x1="24" y1="784" x2="44" y2="784" stroke="var(--text-accent, #c15f3c)" stroke-width="1.6"/>
+<text x="52" y="787.5" fill="var(--text-secondary, #57564f)">the independent check — the only evidence that comes from neither the AI agent nor this service</text>
+</g>
+</svg>

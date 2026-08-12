@@ -14,6 +14,14 @@ from .config import Settings
 
 log = logging.getLogger("github")
 
+REMEDIATION_CONTRACT_SECTIONS = (
+    "## observed problem",
+    "## scope",
+    "## acceptance criteria",
+    "## verification",
+    "## non-goals",
+)
+
 
 def verify_signature(secret: str, body: bytes, signature: str | None) -> bool:
     if not secret or not signature or not signature.startswith("sha256="):
@@ -95,6 +103,90 @@ class GitHubClient:
         )
         response.raise_for_status()
         return response.json()
+
+    def pilot_issue_cohort(
+        self, approved_issue_numbers: set[int] | None = None
+    ) -> dict[str, Any]:
+        """Return the source-backed issue population upstream of automation.
+
+        A task only reaches the local ledger after a person applies the trigger
+        label, so the ledger cannot describe unapproved demand. GitHub owns that
+        population. An issue is included when its body carries the complete
+        remediation contract; approval is reported separately as the trigger
+        label that authorizes a Devin session and its spend.
+        """
+        if self.settings.demo_mode:
+            return {
+                "available": False,
+                "reason": "GitHub backlog is not queried in demo mode",
+            }
+
+        issues: list[dict[str, Any]] = []
+        approval_history = approved_issue_numbers or set()
+        try:
+            for page in range(1, 11):
+                response = self._http.get(
+                    self._url("/issues"),
+                    params={"state": "all", "per_page": 100, "page": page},
+                )
+                response.raise_for_status()
+                batch = response.json()
+                if not isinstance(batch, list):
+                    raise ValueError("GitHub issues response was not a list")
+                issues.extend(batch)
+                if len(batch) < 100:
+                    break
+        except (httpx.HTTPError, ValueError) as exc:
+            log.warning("could not read pilot issue cohort: %s", exc)
+            return {"available": False, "reason": str(exc)[:300]}
+
+        cohort = []
+        trigger = self.settings.trigger_label.lower()
+        for issue in issues:
+            if issue.get("pull_request"):
+                continue
+            body = str(issue.get("body") or "").lower()
+            if not all(section in body for section in REMEDIATION_CONTRACT_SECTIONS):
+                continue
+            labels = {
+                str(label.get("name", "")).lower()
+                for label in issue.get("labels", [])
+                if isinstance(label, dict)
+            }
+            number = int(issue["number"])
+            cohort.append(
+                {
+                    "number": number,
+                    "title": str(issue.get("title") or ""),
+                    "url": str(issue.get("html_url") or ""),
+                    "state": str(issue.get("state") or "unknown"),
+                    # The current label is the GitHub approval signal. The
+                    # ledger preserves that decision if the label is removed
+                    # after a session has already been authorized.
+                    "approved": trigger in labels or number in approval_history,
+                }
+            )
+
+        cohort.sort(key=lambda issue: issue["number"])
+        approved = sum(issue["approved"] for issue in cohort)
+        open_issues = sum(issue["state"] == "open" for issue in cohort)
+        return {
+            "available": True,
+            "source": "GitHub Issues API + remediation ledger",
+            "scope": "all issues with a complete remediation contract",
+            "approval_definition": (
+                f"current {self.settings.trigger_label} label or accepted label webhook"
+            ),
+            "identified": len(cohort),
+            "approved": approved,
+            "awaiting_approval": len(cohort) - approved,
+            "open": open_issues,
+            "open_awaiting_approval": sum(
+                issue["state"] == "open" and not issue["approved"]
+                for issue in cohort
+            ),
+            "issues": cohort,
+        }
 
     def _pr_number(self, pr_url: str) -> str | None:
         """Extract the PR number, refusing anything outside the configured repo."""

@@ -124,6 +124,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def metrics() -> JSONResponse:
         return JSONResponse(snapshot(store, active_settings))
 
+    _issue_cohort: dict[str, Any] = {"at": 0.0, "data": None}
+
+    @app.get("/api/issue-cohort")
+    def issue_cohort() -> dict[str, Any]:
+        """GitHub's view of eligible demand and the human approval boundary.
+
+        Cached because the dashboard refreshes every few seconds while the
+        issue cohort changes only when somebody edits or labels an issue.
+        """
+        if time.time() - _issue_cohort["at"] > 60:
+            approved_history = {
+                int(task["issue_number"]) for task in store.all_tasks(1000)
+            }
+            _issue_cohort["data"] = orchestrator.github.pilot_issue_cohort(
+                approved_history
+            )
+            _issue_cohort["at"] = time.time()
+        return _issue_cohort["data"] or {
+            "available": False,
+            "reason": "no issue cohort data",
+        }
+
     _corroboration: dict[str, Any] = {"at": 0.0, "data": None}
 
     @app.get("/api/corroboration")

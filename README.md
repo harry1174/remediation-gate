@@ -5,6 +5,13 @@
 An event-driven control plane that turns an approved Apache Superset issue into
 a verified pull request using Devin as the engineer doing the work.
 
+**Maturity: production-shaped proof of concept.** It proves the end-to-end
+mechanism with real Devin sessions, pull requests, repository CI and measured
+spend. It does not yet establish repeatability across a representative workload.
+The recommended next step is a controlled pilot of 20 comparable issues with
+review effort, acceptance without rework, cost and failure criteria agreed in
+advance.
+
 **Four policy-approved issues produced three CI-verified pull requests in a
 median of 11.6 minutes, two merged, one correctly refused, and one pull request
 that recovered from a red build without anyone asking. $5.72 total.** No pull
@@ -26,6 +33,18 @@ GitHub issue labeled devin:autofix
   -> repository check-runs confirm it, or contradict it
   -> merge tracking and leadership metrics
 ```
+
+![Remediation Gate architecture: a person approves an issue with a label, which is
+the only thing that starts work; the service records the job, applies budget
+limits, sends it to Devin and checks what comes back; Devin does the engineering
+under a written procedure and reports what it did; the repository's own CI then
+confirms or contradicts that report before anything counts as
+verified.](docs/architecture.svg)
+
+The numbered badges key to
+[the decisions table](#the-decisions-the-brief-didnt-make-for-you) below. The
+coloured path is the only evidence produced by neither the agent nor this
+service.
 
 ## The agent's claim is not the evidence
 
@@ -57,8 +76,9 @@ implying the agent cleared Apache's entire build.
 
 ## What actually happened
 
-Two issues in a fork of Apache Superset, each triggered by a human adding
-`devin:autofix`. Neither pull request was edited by hand.
+Six issue contracts in a fork of Apache Superset form the evaluation cohort. Four
+were triggered by a human adding `devin:autofix`; two remain deliberately
+unapproved. None of the three pull requests was edited by hand.
 
 | Issue | What it was | Session | Result | Time | Cost |
 |---|---|---|---|---|---|
@@ -122,7 +142,8 @@ overclaim. Run against a scratch database, so the figures above are untouched.
 
 To be explicit about what this is and is not evidence of: it demonstrates that
 this service's rejection path works against real GitHub data. It says nothing
-about whether Devin overclaims — across two real remediations, it did not.
+about whether Devin overclaims — across three real PR-producing remediations,
+it did not.
 
 **And it repairs its own red builds, unprompted.**
 [Issue #8](https://github.com/harry1174/superset/issues/8) — a regex accepting
@@ -151,13 +172,13 @@ installed ruff 0.16.2 while the repository pins 0.9.7, so it had been
 adjudicating pull requests against a different linter than the repository uses.
 Now pinned to match.
 
-A codemod cannot decline. That is the clearest evidence in this pilot that the
-work between an issue and an outcome needs judgement, not transformation.
+A codemod cannot decline. That is the clearest evidence in this proof of concept
+that the work between an issue and an outcome needs judgement, not transformation.
 
 **On cost.** Devin reports `acus_consumed: 0.0` on this account — from the
 session object, `/consumption/daily`, and `/consumption/daily/sessions/{id}`
 alike, because it bills in credits. The dashboard therefore withholds
-ACU-derived cost rather than publishing a zero. The $3.00 is a measured balance
+ACU-derived cost rather than publishing a zero. The $5.72 is a measured balance
 delta, which is a better figure anyway.
 
 The deterministic demo adapter exists only so the orchestration can be evaluated
@@ -182,9 +203,9 @@ docker compose up --build -d --wait
 docker compose exec remediation-gate python scripts/demo.py --duplicate
 ```
 
-The tasks progress from queued to session, verified PR, and merged in roughly
-15 seconds. The duplicate delivery returns `duplicate: true` and does not create
-a second task.
+All six tasks progress from queued to session, verified PR, and merged in about
+a minute. The duplicate delivery returns `duplicate: true` and does not create a
+second task.
 
 ```bash
 make test
@@ -262,16 +283,20 @@ and comments again only after verification passes.
 question open. Those questions are the actual design work, so they are answered
 explicitly rather than left implicit in the code.
 
-| Question | Decision | Where it lives |
-|---|---|---|
-| What authorizes spending money? | A human adding `devin:autofix` to a triaged issue. It reuses an approval step every team already has, so nobody learns a new one. | `main.py` webhook filter |
-| What is a duplicate? | One task per `repo#issue`, claimed with `INSERT OR IGNORE`. A redelivered webhook, a label removed and re-added, and an overlapping scan all collapse to one session. | `store.claim_task` |
-| How much can one task spend? | A per-session ACU cap plus a daily budget, checked at admission rather than after the fact. The label is the authorization; the caps are its blast radius. | `orchestrator.dispatch` |
-| What counts as done? | Not a PR URL. Not the agent's word. Every completed check-run on the PR head must pass. | `_reconcile_checks` |
-| Who decides if the fix is even right? | Devin. It is instructed to return `no_change_needed` if the finding doesn't reproduce, and `blocked` if the safe fix needs a product decision. | Playbook `## Specifications` |
-| When does it stop? | Session timeout, CI grace window, and a cap on dispatch retries. Every path terminates. | `Settings`, `TERMINAL_STATES` |
-| What is ambiguous work turned into? | A contract with observed problem, reproduction, scope, acceptance criteria, verification commands and non-goals. The non-goals are what keep diffs reviewable. | `issues/findings.json` |
-| What if the policy is wrong? | It's a Devin Playbook, edited in the web app by the customer's tech lead — not a redeploy of this service. | `policy.py` |
+| # | Question | Decision | Where it lives |
+|---|---|---|---|
+| 1 | What authorizes spending money? | A human adding `devin:autofix` to a triaged issue. It reuses an approval step every team already has, so nobody learns a new one. | `main.py` webhook filter |
+| 2 | What gets through the door? | A valid HMAC signature or 401, and the one configured repository or 403. Ingress is the cheapest place in the system to be strict. | `verify_signature`, `github_webhook` |
+| 3 | What is a duplicate? | One task per `repo#issue`, claimed with `INSERT OR IGNORE`. A redelivered webhook, a label removed and re-added, and an overlapping scan all collapse to one session. | `store.claim_task` |
+| 4 | How much can one task spend? | A per-session ACU cap plus a daily budget, checked at admission rather than after the fact. The label is the authorization; the caps are its blast radius. | `orchestrator.dispatch` |
+| 5 | Who decides if the fix is even right? | Devin. It is instructed to return `no_change_needed` if the finding doesn't reproduce, and `blocked` if the safe fix needs a product decision. | Playbook `## Specifications` |
+| — | What if the policy is wrong? | It's a Devin Playbook, edited in the web app by the customer's tech lead — not a redeploy of this service. | `policy.py` |
+| 6 | What is the agent's answer, exactly? | A typed verdict against a JSON Schema, acted on the moment it exists rather than when the session exits — because a finished session does not reliably end. | `models.DevinVerdict`, `apply_verdict` |
+| 7 | What counts as done? | Not a PR URL. Not the agent's word. Every completed check-run on the PR head must pass. | `_reconcile_checks` |
+| 8 | Whose CI is allowed to say so? | The repository's own, and only that. Devin Review is excluded by allowlist: one agent approving another is not the independent confirmation this gate exists to obtain. | `gating_check_apps` |
+| — | When does it stop? | Session timeout, CI grace window, and a cap on dispatch retries. Every path terminates. | `Settings`, `TERMINAL_STATES` |
+| — | What is ambiguous work turned into? | A contract with observed problem, reproduction, scope, acceptance criteria, verification commands and non-goals. The non-goals are what keep diffs reviewable. | `issues/findings.json` |
+| 9 | What may the dashboard claim? | Measured and modeled never mix, rates are withheld below five resolved tasks, and a cost of zero is reported as unavailable rather than as free. | `metrics.snapshot` |
 
 The state machine is the residue of those decisions:
 
@@ -339,12 +364,12 @@ entirely in the human baseline and pretending otherwise invites an argument
 about a number that was never observed.
 
 Deliberately not claimed: reduced vulnerabilities, incidents, or regressions.
-This pilot measures none of them. Throughput is the proposed mechanism, not an
-observed result — two issues support no throughput statement.
+This proof of concept measures none of them. Throughput is the proposed mechanism,
+not an observed result — four resolved issues support no throughput statement.
 
 Language that survives scrutiny:
 
-> In this pilot, Remediation Gate converted **X** policy-approved issues into
+> In this evaluation, Remediation Gate converted **X** policy-approved issues into
 > **Y** CI-verified pull requests, of which **Z** were merged. Median trigger to
 > CI-verified time was **N** minutes and total usage was **A** ACUs. Those are
 > observed. The capacity and dollar figures are configurable planning scenarios,
@@ -371,6 +396,7 @@ knowledge/         standing Superset repository conventions
 issues/            reproducible issue contracts
 scripts/           policy sync, issue seeding, signed demo replay
 tests/             security, idempotency, budget, and metric invariants
+docs/              architecture diagram and evaluation record
 ```
 
 ## Why Devin is the core primitive

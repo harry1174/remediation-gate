@@ -1,7 +1,13 @@
-# Pilot results
+# Proof-of-concept evidence
 
 Everything here is filled in from a real run. Empty cells stay empty rather than
 being estimated — an unfilled row is a fact about what was not measured.
+
+This evaluation covered six issue contracts: four were approved for Devin,
+three produced CI-verified pull requests, two merged, and one was safely handed
+back without opening a pull request. Median trigger to CI verification was 11.6
+minutes, measured spend was $5.72, and there were zero terminal agent/CI
+contradictions across the three PR-producing runs.
 
 ## Deriving the ACU rate
 
@@ -27,7 +33,7 @@ so in as many words. Once measured, set the value and
 | ACUs consumed (from API) | 0.0 — **not reported on this account** |
 | **Derived $/ACU** | n/a — not reported. Measured cost: **$1.67** run 1, **$1.33** run 2, **$3.00 total for two verified PRs** |
 
-## Per-issue evidence
+## Initial remediation evidence
 
 Both issues were triggered by a human adding `devin:autofix`. Neither PR was
 edited by hand.
@@ -46,15 +52,15 @@ edited by hand.
 | Outcome | **merged** | **verified_pr** |
 | Human intervention | one nudge to emit the verdict | **none** |
 
-Aggregate: 2 triggered, 2 sessions, 2 agent-claimed PRs, 2 CI-verified, 1 merged,
+Initial two-run subtotal: 2 triggered, 2 sessions, 2 agent-claimed PRs, 2 CI-verified, 1 merged,
 0 overclaims, 0 handed back. Median trigger to CI-verified: **13.6 min**.
 
 Rates are withheld below five resolved tasks, so these stay as counts.
 
 ### Corroboration
 
-Devin's own analytics, which this project can only read, reports **2 sessions
-created via API, 2 pull requests created, 1 merged** over the same window — and
+For the initial two-run window, Devin's own analytics, which this project can
+only read, reported **2 sessions created via API, 2 pull requests created, 1 merged** — and
 zero sessions started by a human. That is independent of the SQLite database
 every other figure here comes from.
 
@@ -92,8 +98,9 @@ detail was correct — and it exposed a defect in this project: the
 so it had been adjudicating pull requests against a different linter than the
 repository uses. Now pinned to match.
 
-A codemod cannot decline. This is the clearest evidence in the pilot that the
-work between "issue" and "outcome" requires judgement rather than transformation.
+A codemod cannot decline. This is the clearest evidence in the proof of concept
+that the work between "issue" and "outcome" requires judgement rather than
+transformation.
 
 ## Human time
 
@@ -128,18 +135,18 @@ overclaiming agent would return. Everything downstream is real: the CI failure,
 the check-run poll, the state transition, the taxonomy bucket.
 
 This is evidence that the rejection path works against real GitHub data. It is
-not evidence about Devin's behaviour; across two real remediations there were
-zero overclaims. Run against a scratch database so the pilot figures are
+not evidence about Devin's behaviour; across three real PR-producing
+remediations there were zero terminal overclaims. Run against a scratch database so the evaluation figures are
 untouched.
 
-Both real pull requests passed CI first time, so without this the gate had only
-ever been observed accepting. The failure mode chosen is the meaningful one: the
-linter was silenced rather than satisfied, `ruff check` went green, and the gate
-caught the silencing.
+Two real pull requests passed CI first time. A third initially failed the
+verification lane and Devin corrected it without another human prompt. The
+synthetic fault injection remains useful because it proves the terminal rejection
+path when an agent claim and repository CI never reconcile.
 
-## What this pilot does not show
+## What this proof of concept does not show
 
-- Throughput. Two issues support no rate.
+- Throughput. Four resolved issues support no defensible rate.
 - Reduced vulnerabilities, incidents or regressions. None were measured.
 - Reviewer rework. Both pull requests were reviewed by their own author.
 - Generalisation. One repository, one playbook, one issue class each.
