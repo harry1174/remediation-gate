@@ -15,7 +15,10 @@
       --amber: #b56b18;
       --red: #b33a3a;
       --indigo: #4a57a8;
-      --radius: 6px;
+      --green-soft: #eaf7f2;
+      --indigo-soft: #eef0f8;
+      --amber-soft: #fff4e7;
+      --radius: 8px;
     }
     * { box-sizing: border-box; }
     body {
@@ -26,21 +29,38 @@
       line-height: 1.45;
       letter-spacing: 0;
     }
-    main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 26px 0 54px; }
-    header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; border-bottom: 1px solid var(--rule); padding-bottom: 18px; }
-    h1 { margin: 0; font-size: 26px; line-height: 1.1; letter-spacing: 0; }
+    main { width: min(1200px, calc(100% - 40px)); margin: 0 auto; padding: 30px 0 60px; }
+    header { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; border-bottom: 1px solid var(--rule); padding-bottom: 20px; }
+    h1 { margin: 2px 0 0; font-size: 28px; line-height: 1.1; letter-spacing: -.02em; }
+    .eyebrow { color: var(--indigo); font-size: 11px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
     .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
     .mode { font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; padding: 5px 8px; border: 1px solid var(--rule); border-radius: 4px; white-space: nowrap; }
     .mode.live { color: var(--green); border-color: #abd6c9; background: #eef9f5; }
-    section { margin-top: 26px; }
-    h2 { margin: 0 0 11px; font-size: 13px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
-    .funnel { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
-    .stage { padding: 17px; min-height: 92px; border-right: 1px solid var(--rule); }
-    .stage:last-child { border-right: 0; }
+    section { margin-top: 30px; }
+    h2 { margin: 0; font-size: 17px; color: var(--ink); font-weight: 700; letter-spacing: -.01em; }
+    .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 12px; }
+    .section-head .subtitle { max-width: 660px; margin: 0; text-align: right; font-size: 12.5px; }
+    .section-kicker { margin: 0 0 3px; color: var(--muted); font-size: 10.5px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .75fr); gap: 12px; margin-top: 24px; }
+    .hero-main, .decision-card { border: 1px solid var(--rule); border-radius: var(--radius); }
+    .hero-main { background: var(--surface); padding: 24px 26px 22px; }
+    .hero-title { margin: 4px 0 7px; max-width: 760px; font-size: 31px; line-height: 1.18; letter-spacing: -.025em; }
+    .hero-summary { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
+    .decision-card { display: flex; flex-direction: column; justify-content: space-between; background: var(--ink); color: #fff; padding: 22px; }
+    .decision-label { color: #b9c4d2; font-size: 10.5px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+    .decision-card strong { display: block; margin-top: 8px; font-size: 21px; line-height: 1.25; }
+    .decision-card p { margin: 8px 0 20px; color: #d7dee8; font-size: 13px; }
+    .next-gate { padding-top: 14px; border-top: 1px solid #465160; }
+    .next-gate b, .next-gate span { display: block; }
+    .next-gate b { font-size: 12px; }
+    .next-gate span { margin-top: 4px; color: #b9c4d2; font-size: 11.5px; line-height: 1.45; }
+    .progression { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 22px; }
+    .stage { position: relative; padding: 14px 15px; min-height: 82px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .stage:not(:last-child)::after { content: "→"; position: absolute; top: 29px; right: -18px; color: #9aa5b4; font-weight: 700; }
     .stage-label { color: var(--muted); font-size: 12px; text-transform: uppercase; }
-    .stage-value { display: block; margin-top: 8px; font-size: 28px; font-weight: 700; }
+    .stage-value { display: block; margin-top: 6px; font-size: 27px; font-weight: 700; }
     .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-    .stat { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 15px; min-height: 104px; }
+    .stat { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 16px; min-height: 108px; }
     .stat-label { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
     .stat-value { display: block; margin-top: 7px; font-size: 25px; font-weight: 700; }
     .stat-note { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
@@ -48,11 +68,15 @@
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     th { padding: 10px 12px; text-align: left; color: var(--muted); background: #fafbfd; font-size: 11px; text-transform: uppercase; }
     td { padding: 12px; border-top: 1px solid var(--rule); vertical-align: top; font-size: 13px; overflow-wrap: anywhere; }
-    th:nth-child(1), td:nth-child(1) { width: 38%; }
-    th:nth-child(2), td:nth-child(2) { width: 14%; }
-    th:nth-child(3), td:nth-child(3) { width: 16%; }
-    th:nth-child(4), td:nth-child(4) { width: 10%; }
-    th:nth-child(5), td:nth-child(5) { width: 22%; }
+    .task-table th:nth-child(1), .task-table td:nth-child(1) { width: 40%; }
+    .task-table th:nth-child(2), .task-table td:nth-child(2) { width: 14%; }
+    .task-table th:nth-child(3), .task-table td:nth-child(3) { width: 14%; }
+    .task-table th:nth-child(4), .task-table td:nth-child(4) { width: 14%; }
+    .task-table th:nth-child(5), .task-table td:nth-child(5) { width: 18%; }
+    .reconcile-table th:nth-child(1), .reconcile-table td:nth-child(1) { width: 46%; }
+    .reconcile-table th:nth-child(2), .reconcile-table td:nth-child(2),
+    .reconcile-table th:nth-child(3), .reconcile-table td:nth-child(3) { width: 20%; }
+    .reconcile-table th:nth-child(4), .reconcile-table td:nth-child(4) { width: 14%; }
     .task-title { font-weight: 650; }
     .task-meta, .reason { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
     .state { display: inline-block; padding: 3px 7px; border-radius: 4px; font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace; background: #eef0f6; color: var(--indigo); }
@@ -63,36 +87,45 @@
     .state.running, .state.dispatched, .state.dispatching { color: var(--amber); background: #fff4e7; }
     a { color: #315ea8; text-decoration: none; }
     a:hover { text-decoration: underline; }
-    .links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .links { display: flex; flex-wrap: wrap; gap: 6px; }
+    .links a { padding: 3px 7px; border: 1px solid #cbd7e6; border-radius: 4px; background: #f8fafd; font-size: 11.5px; }
     .empty { padding: 26px; color: var(--muted); }
-    .tree { padding: 18px 20px; font-size: 14px; line-height: 1.9; }
-    .tree .lead { font-size: 17px; font-weight: 650; }
-    .tree .branch { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
-    .tree .good { color: var(--green); font-weight: 650; }
-    .tree .neutral { color: var(--indigo); font-weight: 650; }
-    .tree .note { color: var(--muted); }
-    .split { display: flex; height: 34px; border-radius: 5px; overflow: hidden; margin: 4px 0 14px; }
-    .split span { display: flex; align-items: center; justify-content: center; color: #fff; font: 650 12px Inter, system-ui, sans-serif; min-width: 2px; }
+    .sankey { width: 100%; height: auto; margin: 2px 0 10px; display: block; }
+    .sankey text { font: 12px Inter, system-ui, sans-serif; fill: var(--ink); }
+    .sankey text.count { font-weight: 700; }
+    .sankey text.cap { fill: var(--muted); font-size: 11px; }
+    .sankey .flow { opacity: .38; }
     .seg-merged { background: var(--green); }
     .seg-awaiting { background: #7fbfa8; }
     .seg-handback { background: var(--indigo); }
     .seg-failed { background: var(--red); }
-    .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12.5px; color: var(--muted); margin-bottom: 14px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--muted); }
     .legend b { color: var(--ink); }
     .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: baseline; }
-    footer { margin-top: 22px; color: var(--muted); font-size: 12px; }
+    .capability { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 13px 15px; border: 1px solid #cbd7e6; border-radius: var(--radius); background: #f7f9fd; color: var(--muted); font-size: 12.5px; }
+    .capability strong { color: var(--indigo); white-space: nowrap; }
+    .match { color: var(--green); font-weight: 700; }
+    .diverged { color: var(--red); font-weight: 700; }
+    .scope-note { padding: 10px 12px; border-bottom: 1px solid var(--rule); background: #fafbfd; color: var(--muted); font-size: 12px; }
+    .scenario-note { margin: 0; padding: 13px 14px; border-bottom: 1px solid var(--rule); background: #fafbfd; color: var(--muted); font-size: 12px; }
+    .secondary { margin-top: 34px; }
+    footer { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 11.5px; }
     @media (max-width: 800px) {
+      .hero { grid-template-columns: 1fr; }
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .funnel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .stage:nth-child(2) { border-right: 0; }
-      .stage:nth-child(-n+2) { border-bottom: 1px solid var(--rule); }
+      .progression { grid-template-columns: 1fr; gap: 8px; }
+      .stage:not(:last-child)::after { display: none; }
+      .section-head { align-items: flex-start; flex-direction: column; gap: 5px; }
+      .section-head .subtitle { text-align: left; }
       .panel { overflow-x: auto; }
       table { min-width: 760px; }
     }
     @media (max-width: 480px) {
-      main { width: min(100% - 20px, 1180px); padding-top: 18px; }
+      main { width: min(100% - 20px, 1200px); padding-top: 18px; }
       header { align-items: flex-start; }
       .stats { grid-template-columns: 1fr; }
+      .hero-main, .decision-card { padding: 18px; }
+      .hero-title { font-size: 25px; }
     }
   </style>
 </head>
@@ -100,38 +133,59 @@
 <main>
   <header>
     <div>
+      <span class="eyebrow">Autonomous remediation pilot</span>
       <h1>Remediation Gate</h1>
       <p class="subtitle" id="repo">Loading repository...</p>
     </div>
     <span class="mode" id="mode">loading</span>
   </header>
 
-  <section>
-    <h2>Outcomes</h2>
-    <div class="panel" id="outcomes"></div>
+  <section class="hero" aria-labelledby="outcome-title">
+    <div class="hero-main">
+      <p class="section-kicker">Pilot outcome</p>
+      <h2 class="hero-title" id="outcome-title">Loading pilot evidence...</h2>
+      <p class="hero-summary" id="outcome-summary"></p>
+      <svg class="sankey" id="outcome-flow" role="img" aria-label="Pilot outcome flow" viewBox="0 0 900 190" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="legend" id="outcome-legend"></div>
+    </div>
+    <aside class="decision-card">
+      <div>
+        <span class="decision-label">Leadership readout</span>
+        <strong id="decision-title">Loading decision...</strong>
+        <p id="decision-summary"></p>
+      </div>
+      <div class="next-gate">
+        <b>Next evidence gate</b>
+        <span>20 comparable tasks · reviewer touch time · merge without rework · cost per accepted outcome</span>
+      </div>
+    </aside>
   </section>
 
   <section>
-    <h2>Observed</h2>
+    <div class="section-head">
+      <div><p class="section-kicker">Observed evidence</p><h2>Delivery and economics</h2></div>
+      <p class="subtitle">Measured from the live pilot. No human-effort or production-impact assumptions.</p>
+    </div>
     <div class="stats" id="stats"></div>
   </section>
 
   <section>
-    <h2>Trust and operational control</h2>
+    <div class="section-head">
+      <div><p class="section-kicker">Risk boundary</p><h2>Trust and operational control</h2></div>
+      <p class="subtitle">The agent proposes; repository CI and human merge authority decide what is accepted.</p>
+    </div>
     <div class="stats" id="guardrails"></div>
+    <div class="capability" id="recovery-evidence" hidden></div>
   </section>
 
   <section>
-    <h2>Workflow progression</h2>
-    <p class="subtitle" style="margin:0 0 11px">Stage counts, not a conversion funnel: a refusal is a governed outcome and merging is a human decision, so neither step down is a loss.</p>
-    <div class="funnel" id="funnel"></div>
-  </section>
-
-  <section>
-    <h2>Task evidence</h2>
+    <div class="section-head">
+      <div><p class="section-kicker">Audit trail</p><h2>Task-level evidence</h2></div>
+      <p class="subtitle">Every aggregate resolves to the issue contract, Devin transcript and pull request.</p>
+    </div>
     <div class="panel">
-      <table>
-        <thead><tr><th>Issue</th><th>Class</th><th>State</th><th>Cycle time</th><th>Evidence</th></tr></thead>
+      <table class="task-table">
+        <thead><tr><th>Work item</th><th>Class</th><th>Outcome</th><th>Lead time</th><th>Evidence</th></tr></thead>
         <tbody id="tasks"></tbody>
       </table>
       <p class="empty" id="empty">No work triggered yet.</p>
@@ -139,21 +193,36 @@
   </section>
 
   <section>
-    <h2>Source reconciliation</h2>
-    <p class="subtitle" style="margin:0 0 11px">This database is the operational ledger. Devin analytics is the vendor-side record of the same activity. GitHub Actions is independent repository acceptance evidence — it proves the repository's defined checks passed, not that the change is free of every defect.</p>
+    <div class="section-head">
+      <div><p class="section-kicker">Operating telemetry</p><h2>Workflow progression</h2></div>
+      <p class="subtitle">Stage counts, not conversion: a handback is governed and merging remains a human decision.</p>
+    </div>
+    <div class="progression" id="funnel"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div><p class="section-kicker">Evidence integrity</p><h2>Source reconciliation</h2></div>
+      <p class="subtitle">Activity is reconciled across the control-plane ledger and Devin's vendor-side Metrics API.</p>
+    </div>
     <div class="panel">
-      <table>
-        <thead><tr><th>Evidence</th><th>Control plane</th><th>Devin analytics</th><th></th></tr></thead>
+      <div class="scope-note" id="reconciliation-scope">Checking reporting scope...</div>
+      <table class="reconcile-table">
+        <thead><tr><th>Evidence</th><th>Control-plane ledger</th><th>Devin Metrics API</th><th>Status</th></tr></thead>
         <tbody id="corroboration"></tbody>
       </table>
     </div>
   </section>
 
-  <section>
-    <h2>Modeled &mdash; planning scenarios, not observed savings</h2>
+  <section class="secondary">
+    <div class="section-head">
+      <div><p class="section-kicker">Illustrative business case</p><h2>Planning scenarios</h2></div>
+      <p class="subtitle">Assumption-driven sensitivity analysis, deliberately separated from observed pilot evidence.</p>
+    </div>
     <div class="panel">
+      <p class="scenario-note">These figures show what would need to be true; they are not realised savings or measured capacity returned.</p>
       <table>
-        <thead><tr><th>Scenario</th><th>Baseline hours per remediation</th><th>Effort displaced</th><th>Net value</th></tr></thead>
+        <thead><tr><th>Scenario</th><th>Assumed human baseline</th><th>Potential effort displaced</th><th>Modeled net value</th></tr></thead>
         <tbody id="modeled"></tbody>
       </table>
     </div>
@@ -191,33 +260,112 @@
     root.append(card);
   }
 
-  function renderOutcomes(headline) {
-    const root = document.getElementById('outcomes');
-    root.replaceChildren();
-    const box = document.createElement('div');
-    box.className = 'tree';
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const svgEl = (name, attrs) => {
+    const node = document.createElementNS(SVGNS, name);
+    Object.entries(attrs || {}).forEach(([k, v]) => node.setAttribute(k, v));
+    return node;
+  };
 
-    // A proportional bar reads in a glance; the tree beneath it explains the
-    // structure. Merging is a human decision and a handback is a governed
-    // outcome, so neither is drawn as a loss.
+  // Minimal Sankey: three columns, ribbons proportional to task counts.
+  // Written by hand rather than pulled from a library so the page stays a
+  // single self-contained file with no external requests.
+  function drawSankey(total, stage2, stage3, neutral) {
+    const svg = document.getElementById('outcome-flow');
+    svg.replaceChildren();
+    if (!total) return;
+
+    const W = 900, H = 190, NODE = 13, TOP = 26, BOT = 26;
+    const usable = H - TOP - BOT;
+    const unit = usable / total;
+    const gap = 10;
+    const cols = [40, 430, 830];
+
+    const band = (x, y, h, colour, label, count, anchor) => {
+      svg.append(svgEl('rect', {x, y, width: NODE, height: Math.max(h, 3),
+                                rx: 3, fill: colour}));
+      const tx = anchor === 'end' ? x - 9 : x + NODE + 9;
+      const t1 = svgEl('text', {x: tx, y: y + Math.max(h, 3) / 2 - 1,
+                                'text-anchor': anchor, class: 'count'});
+      t1.textContent = count;
+      const t2 = svgEl('text', {x: tx, y: y + Math.max(h, 3) / 2 + 14,
+                                'text-anchor': anchor, class: 'cap'});
+      t2.textContent = label;
+      svg.append(t1, t2);
+    };
+
+    const ribbon = (x0, y0, h0, x1, y1, h1, colour) => {
+      const mid = (x0 + x1) / 2;
+      const d = `M${x0},${y0} C${mid},${y0} ${mid},${y1} ${x1},${y1} `
+              + `L${x1},${y1 + h1} C${mid},${y1 + h1} ${mid},${y0 + h0} ${x0},${y0 + h0} Z`;
+      svg.append(svgEl('path', {d, fill: colour, class: 'flow'}));
+    };
+
+    // Column 1: every approved task.
+    band(cols[0], TOP, total * unit, neutral, 'Approved tasks', total, 'start');
+
+    // Column 2: how each task was disposed of.
+    let srcY = TOP, y2 = TOP;
+    const pos2 = {};
+    stage2.forEach((s, i) => {
+      const h = s.n * unit;
+      const y = y2 + i * gap;
+      ribbon(cols[0] + NODE, srcY, h, cols[1], y, h, s.colour);
+      band(cols[1], y, h, s.colour, s.label, s.n, 'start');
+      pos2[s.key] = {y, h};
+      srcY += h; y2 += h;
+    });
+
+    // Column 3: what happened to the proposed fixes.
+    let y3 = TOP;
+    stage3.forEach((s, i) => {
+      const h = s.n * unit;
+      const y = y3 + i * gap;
+      const parent = pos2[s.from];
+      if (parent) {
+        ribbon(cols[1] + NODE, parent.y + (parent.consumed || 0), h, cols[2], y, h, s.colour);
+        parent.consumed = (parent.consumed || 0) + h;
+      }
+      band(cols[2], y, h, s.colour, s.label, s.n, 'end');
+      y3 += h;
+    });
+  }
+
+  function renderOutcomes(headline) {
     const awaitingN = headline.verified_prs - headline.merged_prs;
+    document.getElementById('outcome-title').textContent =
+      `${headline.verified_prs} CI-verified fixes from ${headline.resolved} completed tasks`;
+    document.getElementById('outcome-summary').textContent =
+      `${headline.merged_prs} merged · ${awaitingN} awaiting human merge · `
+      + `${headline.handed_back} governed handback · ${headline.failures} failed`;
+
+    // A Sankey rather than a bar: this is a branching decision flow, and the
+    // shape should show where judgement was exercised. Every terminal node is
+    // an intended outcome except `failed`, so nothing here is drawn as
+    // attrition.
+    const COLOUR = {
+      merged: '#168466', awaiting: '#7fbfa8', handback: '#4a57a8',
+      failed: '#b33a3a', neutral: '#8f9bb0',
+    };
+    const stage2 = [
+      {key: 'fix', label: 'Fix proposed', n: headline.verified_prs, colour: COLOUR.merged},
+      {key: 'handback', label: 'Governed handback', n: headline.handed_back, colour: COLOUR.handback},
+      {key: 'failed', label: 'Failed', n: headline.failures, colour: COLOUR.failed},
+    ].filter(s => s.n > 0);
+    const stage3 = [
+      {key: 'merged', label: 'Merged', n: headline.merged_prs, colour: COLOUR.merged, from: 'fix'},
+      {key: 'awaiting', label: 'Awaiting merge', n: awaitingN, colour: COLOUR.awaiting, from: 'fix'},
+    ].filter(s => s.n > 0);
+    drawSankey(headline.resolved, stage2, stage3, COLOUR.neutral);
+
     const segs = [
       ['seg-merged', headline.merged_prs, 'Merged'],
       ['seg-awaiting', awaitingN, 'Awaiting merge'],
       ['seg-handback', headline.handed_back, 'Governed handback'],
       ['seg-failed', headline.failures, 'Failed'],
     ].filter(s => s[1] > 0);
-    const total = segs.reduce((sum, s) => sum + s[1], 0) || 1;
-    const bar = document.createElement('div');
-    bar.className = 'split';
-    segs.forEach(([cls, n]) => {
-      const seg = text('span', String(n), cls);
-      seg.style.flex = `${n} 0 0`;
-      bar.append(seg);
-    });
-    box.append(bar);
-    const legend = document.createElement('div');
-    legend.className = 'legend';
+    const legend = document.getElementById('outcome-legend');
+    legend.replaceChildren();
     segs.forEach(([cls, n, label]) => {
       const item = document.createElement('span');
       const swatch = document.createElement('i');
@@ -227,35 +375,28 @@
       item.append(text('span', label));
       legend.append(item);
     });
-    box.append(legend);
-    const awaiting = headline.verified_prs - headline.merged_prs;
-    const rows = [
-      ['lead', `${headline.resolved} approved tasks completed`],
-      ['branch', `├── `, 'good', `${headline.verified_prs} CI-verified fixes proposed`, 'note',
-        `${headline.autonomous_ci_recoveries ? ` — ${headline.autonomous_ci_recoveries} after recovering from a red build unaided` : ''}`],
-      ['branch', `│   ├── `, 'good', `${headline.merged_prs} merged`, 'note', ''],
-      ['branch', `│   └── `, 'note', `${awaiting} awaiting a human merge decision`, 'note', ''],
-      ['branch', `└── `, 'neutral', `${headline.handed_back} governed handback`, 'note',
-        ' — no compliant in-scope fix; returned for an engineering decision'],
-    ];
-    rows.forEach(row => {
-      const line = document.createElement('div');
-      if (row[0] === 'lead') { line.append(text('span', row[1], 'lead')); }
-      else {
-        line.append(text('span', row[1], 'branch'));
-        line.append(text('span', row[3], row[2]));
-        if (row[5]) line.append(text('span', row[5], 'note'));
-      }
-      box.append(line);
-    });
-    const tail = document.createElement('div');
-    tail.className = 'note';
-    tail.style.marginTop = '10px';
-    tail.textContent = headline.failures === 0
-      ? 'No failures. A refusal is a governed outcome, not a conversion loss.'
-      : `${headline.failures} failed — see the task table.`;
-    box.append(tail);
-    root.append(box);
+  }
+
+  function renderDecision(data) {
+    const headline = data.headline;
+    const title = document.getElementById('decision-title');
+    const summary = document.getElementById('decision-summary');
+    if (data.mode !== 'live') {
+      title.textContent = 'Simulation evidence only';
+      summary.textContent = 'Use a live Devin run before making a pilot decision.';
+    } else if (headline.active > 0) {
+      title.textContent = 'Pilot currently in progress';
+      summary.textContent = `${headline.active} session${headline.active === 1 ? '' : 's'} active. Reassess once repository CI has adjudicated the work.`;
+    } else if (headline.failures > 0) {
+      title.textContent = 'Investigate before expanding';
+      summary.textContent = `${headline.failures} task${headline.failures === 1 ? '' : 's'} failed. Review the task evidence before extending the pilot.`;
+    } else if (headline.verified_prs > 0) {
+      title.textContent = 'Technical viability demonstrated';
+      summary.textContent = `Extend the pilot. Production ROI is not yet proven from ${headline.resolved} completed tasks.`;
+    } else {
+      title.textContent = 'No completed evidence yet';
+      summary.textContent = 'Run policy-approved tasks before making a pilot decision.';
+    }
   }
 
   function renderStats(headline) {
@@ -264,26 +405,34 @@
     const root = document.getElementById('stats');
     root.replaceChildren();
     addStat(root, 'CI-verified fixes', String(headline.verified_prs),
-      `from ${headline.resolved} completed tasks · ${headline.handed_back} governed handback · ${headline.failures} failed`);
+      `repository checks passed · ${headline.handed_back} governed handback · ${headline.failures} failed`);
     addStat(root, 'Trigger to CI-verified', headline.median_minutes_to_verified == null ? '—' : `${headline.median_minutes_to_verified}m`,
-      headline.median_minutes_to_agent_pr == null ? 'median' : `median · agent claimed at ${headline.median_minutes_to_agent_pr}m`);
-    addStat(root, 'Cost per CI-verified PR', headline.cost_per_verified_pr_usd == null ? '—' : `$${headline.cost_per_verified_pr_usd}`,
-      headline.cost_basis.startsWith('unavailable') ? 'ACUs unavailable on this plan — cost withheld' : `$${headline.total_execution_cost_usd} total, ${headline.cost_basis}`);
+      headline.median_minutes_to_agent_pr == null ? 'median' : `median across ${headline.verified_prs} fixes · agent claimed at ${headline.median_minutes_to_agent_pr}m`);
+    addStat(root, 'Observed pilot spend', headline.total_execution_cost_usd == null ? '—' : `$${headline.total_execution_cost_usd}`,
+      headline.cost_per_verified_pr_usd == null ? 'cost per verified output unavailable' : `$${headline.cost_per_verified_pr_usd} per CI-verified PR · every attempt included`);
     addStat(root, 'Merged', `${headline.merged_prs}`, `${headline.verified_prs - headline.merged_prs} verified and awaiting a human decision`);
 
     const guard = document.getElementById('guardrails');
     guard.replaceChildren();
     if (headline.ci_confirmation === 'required') {
       addStat(guard, 'Independent CI confirmation', `${headline.ci_adjudicated - headline.terminal_ci_contradictions} / ${headline.ci_adjudicated}`,
-        `${headline.terminal_ci_contradictions} unresolved agent/CI disagreements after the recovery window`);
+        `${headline.terminal_ci_contradictions} unresolved agent/CI disagreements`);
     } else {
       addStat(guard, 'CI confirmation', 'disabled', 'verified rests on the agent self-report');
     }
     addStat(guard, 'Rolling 24h session cap', `${headline.sessions_today} / ${headline.session_cap}`,
       headline.acu_budget_enforceable ? `${headline.total_acus} ACUs observed` : 'the ACU budget cannot be enforced — this plan reports none');
-    addStat(guard, 'Autonomous CI recovery', String(headline.autonomous_ci_recoveries),
-      'capability observed, not a rate — one occurrence');
+    addStat(guard, 'Governed handbacks', String(headline.handed_back),
+      'no compliant in-scope fix · no speculative PR opened');
     addStat(guard, 'In flight', String(headline.active), 'sessions currently running');
+
+    const recovery = document.getElementById('recovery-evidence');
+    recovery.replaceChildren();
+    recovery.hidden = headline.autonomous_ci_recoveries === 0;
+    if (!recovery.hidden) {
+      recovery.append(text('strong', 'Observed autonomous behaviour'));
+      recovery.append(text('span', `${headline.autonomous_ci_recoveries} pull request recovered from red CI with a corrected commit and no human prompt. A capability example, not a rate.`));
+    }
   }
 
   function renderModeled(modeled, merged) {
@@ -303,29 +452,33 @@
 
   async function renderCorroboration(headline) {
     const root = document.getElementById('corroboration');
+    const scope = document.getElementById('reconciliation-scope');
     root.replaceChildren();
     let c;
     try { c = await (await fetch('/api/corroboration')).json(); }
     catch (e) { c = {available: false, reason: 'unreachable'}; }
     if (!c.available) {
+      scope.textContent = 'Vendor-side reconciliation is currently unavailable; operational evidence remains available below.';
       const tr = document.createElement('tr');
       const td = text('td', `Devin analytics unavailable: ${c.reason}. Every figure above comes from this service's own database.`);
       td.colSpan = 4;
       tr.append(td); root.append(tr);
       return;
     }
+    scope.textContent = c.scoped_to_playbook
+      ? 'Scoped to this remediation Playbook and the pilot reporting window.'
+      : 'Warning: Devin figures are organization-wide rather than scoped to this Playbook.';
     const rows = [
-      ['Sessions (API origin, this playbook)', headline.sessions_started, c.api_sessions],
-      ['Pull requests created', headline.agent_claimed_prs, c.prs_created],
-      ['Scoped to the remediation playbook', 'yes', c.scoped_to_playbook ? 'yes' : 'NO — org-wide'],
-      ['Pull requests merged', headline.merged_prs, c.prs_merged],
+      ['Sessions created with this Playbook', headline.sessions_started, c.api_sessions],
+      ['Devin-authored pull requests', headline.agent_claimed_prs, c.prs_created],
+      ['Merged pull requests', headline.merged_prs, c.prs_merged],
     ];
     rows.forEach(([label, local, remote]) => {
       const tr = document.createElement('tr');
       tr.append(text('td', label));
       tr.append(text('td', String(local)));
       tr.append(text('td', String(remote)));
-      tr.append(text('td', local === remote ? 'match' : 'DIVERGED'));
+      tr.append(text('td', local === remote ? 'Matched' : 'Diverged', local === remote ? 'match' : 'diverged'));
       root.append(tr);
     });
   }
@@ -356,7 +509,7 @@
     queued: 'Queued',
   };
 
-  function renderTasks(tasks) {
+  function renderTasks(tasks, recoveryIds) {
     const root = document.getElementById('tasks');
     const empty = document.getElementById('empty');
     root.replaceChildren();
@@ -365,7 +518,14 @@
       const row = document.createElement('tr');
       const issue = document.createElement('td');
       issue.append(text('span', `#${task.issue_number} ${task.title}`, 'task-title'));
-      issue.append(text('span', task.checks_conclusion ? `CI: ${task.checks_conclusion}` : 'no CI verdict yet', 'task-meta'));
+      let evidenceSummary = task.checks_conclusion
+        ? `Repository CI: ${task.checks_conclusion}`
+        : 'No repository CI verdict yet';
+      if (task.state === 'blocked' || task.state === 'no_change_needed') {
+        evidenceSummary = 'No pull request opened';
+      }
+      if (recoveryIds.has(task.id)) evidenceSummary += ' · recovered after red CI';
+      issue.append(text('span', evidenceSummary, 'task-meta'));
       if (task.failure_reason) {
         const full = task.failure_reason;
         const short = task.state === 'blocked'
@@ -383,7 +543,10 @@
       badge.title = task.state;
       stateCell.append(badge);
       row.append(stateCell);
-      row.append(text('td', task.minutes_to_verified != null ? `${task.minutes_to_verified}m to CI green` : `${task.elapsed_minutes}m elapsed`));
+      let leadTime = `${task.elapsed_minutes}m elapsed`;
+      if (task.minutes_to_verified != null) leadTime = `${task.minutes_to_verified}m to CI green`;
+      else if (task.state === 'blocked' || task.state === 'no_change_needed') leadTime = `${task.elapsed_minutes}m to decision`;
+      row.append(text('td', leadTime));
       const evidence = document.createElement('td');
       const links = document.createElement('div');
       links.className = 'links';
@@ -404,16 +567,20 @@
       const span = w && w.from ? `${new Date(w.from * 1000).toLocaleDateString()} – ${new Date(w.to * 1000).toLocaleDateString()}` : 'no activity';
       document.getElementById('repo').textContent =
         `${data.repo} · pilot window ${span} · ${data.headline.active} active, `
-        + `${data.headline.resolved} resolved · updated ${new Date(data.generated_at * 1000).toLocaleTimeString()}`;
+        + `${data.headline.resolved} completed · refreshed ${new Date(data.generated_at * 1000).toLocaleTimeString()}`;
       const mode = document.getElementById('mode');
       mode.textContent = data.mode === 'live' ? 'Live · Devin API' : 'Demo · no ACUs spent';
       mode.className = `mode ${data.mode}`;
+      renderDecision(data);
       renderFunnel(data.funnel);
       renderOutcomes(data.headline);
       renderStats(data.headline);
       renderModeled(data.modeled, data.headline.merged_prs);
       renderCorroboration(data.headline);
-      renderTasks(data.tasks);
+      const recoveryIds = new Set(data.events
+        .filter(event => event.kind === 'ci_failed_awaiting_agent')
+        .map(event => event.task_id));
+      renderTasks(data.tasks, recoveryIds);
       const a = data.assumptions;
       const measured = data.headline.cost_basis.indexOf('balance') !== -1;
       document.getElementById('assumptions').textContent =
